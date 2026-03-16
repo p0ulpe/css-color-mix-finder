@@ -57,6 +57,7 @@ function clearHistory() {
 function deltaEClass(v) { return v > 5 ? 'bad' : v > 2 ? 'ok' : 'good'; }
 
 function createHistoryItemHTML(e) {
+    const mode = e.mode || 'shared';
     const pinCls = e.pinned ? ' pinned' : '';
     const setsArr = e.sets || [{
         name: 'set',
@@ -69,49 +70,74 @@ function createHistoryItemHTML(e) {
         activeDeltaE: e.activeDeltaE,
     }];
 
-    // Shared percentages (new model) or fall back to old per-set model
     const hPct = e.hoverPercent || (setsArr[0] && setsArr[0].hoverPercent) || '?';
     const aPct = e.activePercent || (setsArr[0] && setsArr[0].activePercent) || '?';
 
-    const setLines = setsArr.map(s => `
+    // Top-row blend column
+    const blendColHTML = mode === 'shared'
+        ? `<div class="hist-blend-col">
+      <div class="hist-swatch hist-swatch--blend" style="background:${e.blendHex}" data-tooltip="${e.blendHex ? e.blendHex.toUpperCase() : ''}"></div>
+      <span class="hist-swatch-lbl">${e.blendHex ? e.blendHex.toUpperCase() : ''}</span>
+    </div>`
+        : `<div class="hist-blend-col">
+      <div class="hist-multi-blends">${setsArr.map(s => `<div class="hist-swatch hist-swatch--blend" style="background:${s.blendHex || ''}" data-tooltip="${s.blendHex ? s.blendHex.toUpperCase() : ''}"></div>`).join('')}</div>
+      <span class="hist-swatch-lbl hist-swatch-lbl--muted">per-set</span>
+    </div>`;
+
+    const pctHTML = mode === 'independent'
+        ? `<span class="hist-pct" style="opacity:0.4"><span class="tag tag--hover">h</span>—</span>
+    <span class="hist-pct" style="opacity:0.4"><span class="tag tag--active">a</span>—</span>`
+        : `<span class="hist-pct"><span class="tag tag--hover">h</span>${hPct}%</span>
+    <span class="hist-pct"><span class="tag tag--active">a</span>${aPct}%</span>`;
+
+    const spaceHTML = mode === 'independent'
+        ? `<div class="hist-space-badge">per-set</div>`
+        : `<div class="hist-space-badge">${e.colorSpace || '—'}</div>`;
+
+    const setLines = setsArr.map(s => {
+        const setBlendSwatch = (mode === 'per-set-blend' || mode === 'independent') && s.blendHex
+            ? `<div class="hist-swatch hist-swatch--blend" style="background:${s.blendHex}" data-tooltip="Blend ${s.blendHex.toUpperCase()}"></div>`
+            : '';
+        const setPercentBadges = mode === 'independent'
+            ? `<span class="hist-set-pct-badge"><span class="tag tag--hover">h</span>${s.hoverPercent || '?'}%</span><span class="hist-set-pct-badge"><span class="tag tag--active">a</span>${s.activePercent || '?'}%</span>`
+            : '';
+        return `
         <div class="hist-set-line">
+            ${setBlendSwatch}
             <span class="hist-set-name">${s.name}</span>
-            <div class="hist-swatch" style="background:${s.baseHex}" data-tooltip="Base ${s.baseHex.toUpperCase()}"></div>
+            ${setPercentBadges}
+            <div class="hist-swatch" style="background:${s.baseHex}" data-tooltip="Base ${s.baseHex ? s.baseHex.toUpperCase() : ''}"></div>
             <div class="hist-state-col">
                 <div class="hist-state-row">
                     <div class="hist-overlay-wrap">
-                        <div class="hist-swatch hist-swatch--state" style="background:${s.hoverTargetHex}" data-tooltip="Target ${s.hoverTargetHex.toUpperCase()}"></div><div class="hist-swatch hist-swatch--result" style="background:${s.hoverComputed}" data-tooltip="Result ${s.hoverComputed.toUpperCase()}"></div>
+                        <div class="hist-swatch hist-swatch--state" style="background:${s.hoverTargetHex}" data-tooltip="Target ${s.hoverTargetHex ? s.hoverTargetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${s.hoverComputed}" data-tooltip="Result ${s.hoverComputed ? s.hoverComputed.toUpperCase() : ''}"></div>
                     </div>
                 </div>
                 <div class="hist-tag-row">
                     <span class="tag tag--hover">hover</span>
-                    <span class="hist-delta ${deltaEClass(s.hoverDeltaE)}">${s.hoverDeltaE.toFixed(1)}</span>
+                    <span class="hist-delta ${deltaEClass(s.hoverDeltaE)}">${s.hoverDeltaE != null ? s.hoverDeltaE.toFixed(1) : '?'}</span>
                 </div>
             </div>
             <div class="hist-state-col">
                 <div class="hist-state-row">
                     <div class="hist-overlay-wrap">
-                        <div class="hist-swatch hist-swatch--state" style="background:${s.activeTargetHex}" data-tooltip="Target ${s.activeTargetHex.toUpperCase()}"></div><div class="hist-swatch hist-swatch--result" style="background:${s.activeComputed}" data-tooltip="Result ${s.activeComputed.toUpperCase()}"></div>
+                        <div class="hist-swatch hist-swatch--state" style="background:${s.activeTargetHex}" data-tooltip="Target ${s.activeTargetHex ? s.activeTargetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${s.activeComputed}" data-tooltip="Result ${s.activeComputed ? s.activeComputed.toUpperCase() : ''}"></div>
                     </div>
                 </div>
                 <div class="hist-tag-row">
                     <span class="tag tag--active">active</span>
-                    <span class="hist-delta ${deltaEClass(s.activeDeltaE)}">${s.activeDeltaE.toFixed(1)}</span>
+                    <span class="hist-delta ${deltaEClass(s.activeDeltaE)}">${s.activeDeltaE != null ? s.activeDeltaE.toFixed(1) : '?'}</span>
                 </div>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 
     return `
 <div class="hist-item${pinCls}" data-id="${e.id}">
   <div class="hist-top-row">
-    <div class="hist-blend-col">
-      <div class="hist-swatch hist-swatch--blend" style="background:${e.blendHex}" data-tooltip="${e.blendHex.toUpperCase()}"></div>
-      <span class="hist-swatch-lbl">${e.blendHex.toUpperCase()}</span>
-    </div>
-    <span class="hist-pct"><span class="tag tag--hover">h</span>${hPct}%</span>
-    <span class="hist-pct"><span class="tag tag--active">a</span>${aPct}%</span>
-    <div class="hist-space-badge">${e.colorSpace}</div>
+    ${blendColHTML}
+    ${pctHTML}
+    ${spaceHTML}
     <button class="hist-pin${e.pinned ? ' pinned' : ''}" data-id="${e.id}" aria-label="${e.pinned ? 'Unpin' : 'Pin'} entry">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${e.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V5a1 1 0 0 1 1-1l.3-.15a2 2 0 0 0 .7-2.85h-10a2 2 0 0 0 .7 2.85L8 4a1 1 0 0 1 1 1z"/></svg>
     </button>
