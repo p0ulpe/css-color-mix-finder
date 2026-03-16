@@ -1,10 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
-    syncColorInputs('baseColor', 'baseColorPicker', 'basePreview');
-    syncColorInputs('hoverColor', 'hoverColorPicker', 'hoverPreview');
-    syncColorInputs('activeColor', 'activeColorPicker', 'activePreview');
-
-    initHistory();
     initTheme();
+    initHistory();
+
+    // If history didn't restore any sets, add a default one
+    if (document.querySelectorAll('.set-row').length === 0) {
+        addSet();
+    }
+
+    document.getElementById('addSetBtn').addEventListener('click', () => addSet());
 
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('.copy-btn');
@@ -42,57 +45,49 @@ function copyToClipboard(text, btn) {
     });
 }
 
-function getHex(id) {
-    return normalizeHex(document.getElementById(id).value.trim());
-}
-
-function getFixedPct(id) {
-    const val = parseInt(document.getElementById(id).value, 10);
-    if (isNaN(val) || val < 1 || val > 100) return null;
-    return val;
-}
-
 function calculate() {
-    const baseHex = getHex('baseColor');
-    const hoverTargetHex = getHex('hoverColor');
-    const activeTargetHex = getHex('activeColor');
-    const fixedHoverPct = getFixedPct('hoverFixedPct');
-    const fixedActivePct = getFixedPct('activeFixedPct');
+    const sets = getSetsFromUI();
     const spaceSelect = document.getElementById('colorSpaceSelect').value;
     const forcedSpace = spaceSelect === 'auto' ? null : spaceSelect;
 
-    if (!isValidHex(baseHex) || !isValidHex(hoverTargetHex) || !isValidHex(activeTargetHex)) {
-        alert('Please enter valid hex colors for all three fields.');
-        return;
+    for (const s of sets) {
+        if (!isValidHex(s.baseHex) || !isValidHex(s.hoverTargetHex) || !isValidHex(s.activeTargetHex)) {
+            alert('Please enter valid hex colors for all fields.');
+            return;
+        }
     }
 
     showLoading(true);
 
     setTimeout(() => {
         try {
-            const best = findBestColorSpace(baseHex, hoverTargetHex, activeTargetHex, fixedHoverPct, fixedActivePct, forcedSpace);
+            const { fixedHoverPct, fixedActivePct } = getFixedPctsFromUI();
+            const best = findBestColorSpaceMultiSet(sets, forcedSpace, fixedHoverPct, fixedActivePct);
             if (!best) {
                 alert('Could not find a suitable blend color. Try different target colors.');
                 return;
             }
+
             const resultData = {
                 blendHex: best.result.blendHex,
                 colorSpace: best.space,
                 hoverPercent: best.result.hoverPercent,
-                hoverComputed: best.result.hoverComputed,
-                hoverDeltaE: best.result.hoverDeltaE,
                 activePercent: best.result.activePercent,
-                activeComputed: best.result.activeComputed,
-                activeDeltaE: best.result.activeDeltaE,
-                baseHex,
-                hoverTargetHex,
-                activeTargetHex,
-                fixedHoverPct,
-                fixedActivePct,
+                fixedHoverPct: fixedHoverPct,
+                fixedActivePct: fixedActivePct,
+                sets: sets.map((s, i) => ({
+                    name: s.name,
+                    baseHex: s.baseHex,
+                    hoverTargetHex: s.hoverTargetHex,
+                    activeTargetHex: s.activeTargetHex,
+                    hoverComputed: best.result.sets[i].hoverComputed,
+                    hoverDeltaE: best.result.sets[i].hoverDeltaE,
+                    activeComputed: best.result.sets[i].activeComputed,
+                    activeDeltaE: best.result.sets[i].activeDeltaE,
+                })),
             };
             renderResults(resultData);
             addHistoryEntry(resultData);
-            // If auto mode, reflect the winning space in the badge but leave select on "auto"
         } catch(err) {
             console.error(err);
             alert('An error occurred. Check the console for details.');

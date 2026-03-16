@@ -141,6 +141,211 @@ function findBestColorSpace(baseHex, hoverTargetHex, activeTargetHex, fixedHover
     return best;
 }
 
+// ── Multi-set solver (shared blend color + shared hover% + shared active%) ──
+// sets: array of { baseHex, hoverTargetHex, activeTargetHex }
+// fixedHoverPct / fixedActivePct: null (auto) or number 1-100 (lock that state's %)
+// Returns { blendHex, hoverPercent, activePercent, totalDeltaE,
+//           sets: [{ hoverComputed, hoverDeltaE, activeComputed, activeDeltaE }] }
+function solveMultiSet(sets, space, fixedHoverPct, fixedActivePct) {
+    space = space || 'oklab';
+
+    // 1. Gather seed blend colors from each set's individual solution
+    const seeds = [];
+    for (const s of sets) {
+        const hSeed = solveBlendColor(s.baseHex, s.hoverTargetHex, space);
+        const aSeed = solveBlendColor(s.baseHex, s.activeTargetHex, space);
+        if (hSeed) seeds.push(hSeed.blendHex);
+        if (aSeed) seeds.push(aSeed.blendHex);
+    }
+    if (seeds.length === 0) return null;
+
+    // 2. Build candidate pool from all pairs of seeds + centroid
+    const allCandidates = new Set();
+    for (const hex of seeds) allCandidates.add(hex);
+
+    // Add centroid (average of all seeds)
+    const seedRgbs = seeds.map(h => hexToRgb(h));
+    const centroid = rgbToHex({
+        r: Math.round(seedRgbs.reduce((s, c) => s + c.r, 0) / seedRgbs.length),
+        g: Math.round(seedRgbs.reduce((s, c) => s + c.g, 0) / seedRgbs.length),
+        b: Math.round(seedRgbs.reduce((s, c) => s + c.b, 0) / seedRgbs.length),
+    });
+    allCandidates.add(centroid);
+
+    // Pair-wise interpolation + neighborhood
+    for (let i = 0; i < seeds.length; i++) {
+        for (let j = i + 1; j < seeds.length; j++) {
+            for (const c of generateBlendCandidates(seeds[i], seeds[j])) {
+                allCandidates.add(c);
+            }
+        }
+    }
+    // Also interpolate each seed with the centroid
+    for (const hex of seeds) {
+        for (const c of generateBlendCandidates(hex, centroid)) {
+            allCandidates.add(c);
+        }
+    }
+    if (seeds.length === 1) {
+        for (const c of generateBlendCandidates(seeds[0], seeds[0])) {
+            allCandidates.add(c);
+        }
+    }
+
+    // Helper: evaluate a candidate, returns { hPct, aPct, worstDE, setResults, totalDeltaE }
+    const fineHover = fixedHoverPct != null ? [fixedHoverPct] : Array.from({ length: 100 }, (_, i) => i + 1);
+    const fineActive = fixedActivePct != null ? [fixedActivePct] : Array.from({ length: 100 }, (_, i) => i + 1);
+
+    function evaluateCandidate(candidateHex) {
+        let bestHPct = null, bestHWorst = Infinity;
+        for (const hPct of fineHover) {
+            let worstDE = 0;
+            for (const s of sets) { const dE = deltaE(colorMix(s.baseHex, candidateHex, hPct, space), s.hoverTargetHex); if (dE > worstDE) worstDE = dE; }
+            if (worstDE < bestHWorst) { bestHWorst = worstDE; bestHPct = hPct; }
+        }
+        let bestAPct = null, bestAWorst = Infinity;
+        for (const aPct of fineActive) {
+            let worstDE = 0;
+            for (const s of sets) { const dE = deltaE(colorMix(s.baseHex, candidateHex, aPct, space), s.activeTargetHex); if (dE > worstDE) worstDE = dE; }
+            if (worstDE < bestAWorst) { bestAWorst = worstDE; bestAPct = aPct; }
+        }
+        const worstDE = Math.max(bestHWorst, bestAWorst);
+        const setResults = [];
+        let totalDeltaE = 0;
+        for (const s of sets) {
+            const hComp = colorMix(s.baseHex, candidateHex, bestHPct, space);
+            const aComp = colorMix(s.baseHex, candidateHex, bestAPct, space);
+            const hDE = deltaE(hComp, s.hoverTargetHex);
+            const aDE = deltaE(aComp, s.activeTargetHex);
+            totalDeltaE += hDE + aDE;
+            setResults.push({ hoverComputed: hComp, hoverDeltaE: hDE, activeComputed: aComp, activeDeltaE: aDE });
+        }
+        return { hPct: bestHPct, aPct: bestAPct, worstDE, setResults, totalDeltaE };
+    }
+
+    // ── Phase 1: coarse scan to rank candidates ──
+    const coarseHover = fixedHoverPct != null ? [fixedHoverPct] : [5, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 100];
+    const coarseActive = fixedActivePct != null ? [fixedActivePct] : [5, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 100];
+
+    const candidates = [...allCandidates];
+    const coarseScores = [];
+    for (const candidateHex of candidates) {
+        let bestH = Infinity, bestA = Infinity;
+        for (const hPct of coarseHover) {
+            let worstDE = 0;
+            for (const s of sets) { const dE = deltaE(colorMix(s.baseHex, candidateHex, hPct, space), s.hoverTargetHex); if (dE > worstDE) worstDE = dE; }
+            if (worstDE < bestH) bestH = worstDE;
+        }
+        for (const aPct of coarseActive) {
+            let worstDE = 0;
+            for (const s of sets) { const dE = deltaE(colorMix(s.baseHex, candidateHex, aPct, space), s.activeTargetHex); if (dE > worstDE) worstDE = dE; }
+            if (worstDE < bestA) bestA = worstDE;
+        }
+        coarseScores.push({ hex: candidateHex, score: Math.max(bestH, bestA) });
+    }
+    coarseScores.sort((a, b) => a.score - b.score);
+    const finalists = coarseScores.slice(0, 80);
+
+    // ── Phase 2: fine scan on top candidates ──
+    let best = null, bestScore = Infinity;
+    for (const { hex: candidateHex } of finalists) {
+        const ev = evaluateCandidate(candidateHex);
+        if (ev.worstDE < bestScore) {
+            bestScore = ev.worstDE;
+            best = { blendHex: candidateHex, hoverPercent: ev.hPct, activePercent: ev.aPct, totalDeltaE: ev.totalDeltaE, sets: ev.setResults };
+        }
+    }
+
+    // ── Phase 3: iterative hill-climbing refinement ──
+    // Multiple rounds: each round explores ±8 around the current best,
+    // then narrows to ±3 for fine-tuning. This "walks" toward the optimum.
+    if (best) {
+        const radii = [10, 6, 3];  // progressively tighter
+        for (const radius of radii) {
+            const rgb = hexToRgb(best.blendHex);
+            const step = radius > 6 ? 2 : 1;
+            const refinedCandidates = new Set();
+            for (let dr = -radius; dr <= radius; dr += step)
+                for (let dg = -radius; dg <= radius; dg += step)
+                    for (let db = -radius; db <= radius; db += step)
+                        refinedCandidates.add(rgbToHex({
+                            r: Math.max(0, Math.min(255, rgb.r + dr)),
+                            g: Math.max(0, Math.min(255, rgb.g + dg)),
+                            b: Math.max(0, Math.min(255, rgb.b + db)),
+                        }));
+            for (const candidateHex of refinedCandidates) {
+                const ev = evaluateCandidate(candidateHex);
+                if (ev.worstDE < bestScore) {
+                    bestScore = ev.worstDE;
+                    best = { blendHex: candidateHex, hoverPercent: ev.hPct, activePercent: ev.aPct, totalDeltaE: ev.totalDeltaE, sets: ev.setResults };
+                }
+            }
+        }
+
+        // Also explore around top-5 finalists (may find a different basin)
+        const topHexes = finalists.slice(0, 5).map(f => f.hex);
+        for (const hex of topHexes) {
+            if (hex === best.blendHex) continue;
+            const rgb = hexToRgb(hex);
+            const refinedCandidates = new Set();
+            for (let dr = -6; dr <= 6; dr += 1)
+                for (let dg = -6; dg <= 6; dg += 1)
+                    for (let db = -6; db <= 6; db += 1)
+                        refinedCandidates.add(rgbToHex({
+                            r: Math.max(0, Math.min(255, rgb.r + dr)),
+                            g: Math.max(0, Math.min(255, rgb.g + dg)),
+                            b: Math.max(0, Math.min(255, rgb.b + db)),
+                        }));
+            for (const candidateHex of refinedCandidates) {
+                const ev = evaluateCandidate(candidateHex);
+                if (ev.worstDE < bestScore) {
+                    bestScore = ev.worstDE;
+                    best = { blendHex: candidateHex, hoverPercent: ev.hPct, activePercent: ev.aPct, totalDeltaE: ev.totalDeltaE, sets: ev.setResults };
+                }
+            }
+        }
+
+        // Final tight pass around the winner
+        {
+            const rgb = hexToRgb(best.blendHex);
+            for (let dr = -3; dr <= 3; dr++)
+                for (let dg = -3; dg <= 3; dg++)
+                    for (let db = -3; db <= 3; db++) {
+                        const candidateHex = rgbToHex({
+                            r: Math.max(0, Math.min(255, rgb.r + dr)),
+                            g: Math.max(0, Math.min(255, rgb.g + dg)),
+                            b: Math.max(0, Math.min(255, rgb.b + db)),
+                        });
+                        const ev = evaluateCandidate(candidateHex);
+                        if (ev.worstDE < bestScore) {
+                            bestScore = ev.worstDE;
+                            best = { blendHex: candidateHex, hoverPercent: ev.hPct, activePercent: ev.aPct, totalDeltaE: ev.totalDeltaE, sets: ev.setResults };
+                        }
+                    }
+        }
+    }
+
+    return best;
+}
+
+function findBestColorSpaceMultiSet(sets, forcedSpace, fixedHoverPct, fixedActivePct) {
+    const spaces = forcedSpace ? [forcedSpace] : ['oklab', 'lab', 'srgb'];
+    let best = null, bestWorst = Infinity;
+    for (const space of spaces) {
+        try {
+            const result = solveMultiSet(sets, space, fixedHoverPct, fixedActivePct);
+            if (!result) continue;
+            // Compare by worst individual deltaE (minimax across spaces too)
+            const worstDE = Math.max(...result.sets.map(s => Math.max(s.hoverDeltaE, s.activeDeltaE)));
+            if (worstDE < bestWorst) {
+                bestWorst = worstDE;
+                best = { space, result };
+            }
+        } catch(e) {}
+    }
+    return best;
+}
+
 // Evaluate a fixed pct without searching
 function fitAtFixedPct(baseHex, targetHex, blendHex, pct, space) {
     const computedHex = colorMix(baseHex, blendHex, pct, space);
