@@ -2,6 +2,8 @@
 
 A browser tool to find the perfect `color-mix()` blend color that reproduces your design token states (hover, active, tints, …).
 
+![Color sets input](docs/screenshots/color-sets.png)
+
 ## What it does
 
 Given a **base color** and two **target colors** (e.g. hover and active states), the tool reverse-engineers the blend color and percentages to use in `color-mix()` so the results visually match your targets as closely as possible.
@@ -18,6 +20,10 @@ background-color: color-mix(in oklab, #e0001a 100%, #500001 33%);
   - *Shared blend color* — one blend color + shared percentages for all sets
   - *Per-set blend, shared %* — each set gets its own blend color, percentages are shared
   - *Independent per set* — fully independent blend color and percentages per set
+
+![Results — shared blend color](docs/screenshots/results-shared.png)
+
+![Results — per-set blend with shared %](docs/screenshots/results-multi-set.png)
 - Supports **oklab**, **lab**, and **sRGB** color spaces — or let it pick the best fit automatically
 - Fix one or both target percentages to constrain and speed up the search
 - Shows **Delta E** perceptual color difference between result and target
@@ -26,6 +32,8 @@ background-color: color-mix(in oklab, #e0001a 100%, #500001 33%);
 - **Pin** history entries to protect them from being evicted
 - Light / dark mode toggle
 - Solver runs in a **Web Worker** — UI stays responsive during long calculations
+
+![History — all three modes](docs/screenshots/history.png)
 
 ## Usage
 
