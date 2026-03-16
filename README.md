@@ -28,7 +28,19 @@ npm install
 npm start   # opens http://127.0.0.1:8080
 ```
 
+> **`npm start` is required** — do not open `index.html` directly as a `file://` URL.
+> The solver runs in a [Web Worker](src/js/solver-worker.js) which uses `importScripts`.
+> This only works over HTTP, not from the filesystem.
+
 No build step — vanilla HTML/CSS/JS served by live-server.
+
+## Tests
+
+```bash
+npm test
+```
+
+Note: the test suite (`tests/`) currently uses ES module `import` syntax while the source files are plain browser globals. Tests will fail to run until the test files are updated to match. The source files themselves are correct and tested manually in the browser.
 
 ## License
 
