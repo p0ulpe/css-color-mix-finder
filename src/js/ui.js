@@ -163,36 +163,87 @@ function formatDeltaE(value) {
     return { text, cls };
 }
 
+const _COPY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+
 function renderResults(data) {
-    const { blendHex, colorSpace, hoverPercent, activePercent, sets } = data;
+    const mode = data.mode || 'shared';
+    const { sets } = data;
 
-    setSwatchColor('blendSwatch', blendHex);
-    setText('blendHex', blendHex.toUpperCase());
-    document.getElementById('copyBlendBtn').dataset.copy = blendHex.toUpperCase();
-    setText('colorSpaceValue', colorSpace);
-    setText('blendHoverPctValue', hoverPercent + '%');
-    setText('blendActivePctValue', activePercent + '%');
+    // ── Shared blend / shared % header card ─────────────────────────────────
+    const blendCard = document.querySelector('.blend-color-card');
+    const blendSwatchEl = document.getElementById('blendSwatch');
+    const blendInfoEl = document.querySelector('.blend-info');
+    const cssBadge = document.querySelector('.result-header .color-space-badge');
 
+    if (mode === 'shared') {
+        blendCard.hidden = false;
+        blendCard.querySelector('h3').textContent = 'Shared blend values';
+        blendSwatchEl.hidden = false;
+        blendInfoEl.hidden = false;
+        cssBadge.hidden = false;
+        setSwatchColor('blendSwatch', data.blendHex);
+        setText('blendHex', data.blendHex.toUpperCase());
+        document.getElementById('copyBlendBtn').dataset.copy = data.blendHex.toUpperCase();
+        setText('colorSpaceValue', data.colorSpace);
+        setText('blendHoverPctValue', data.hoverPercent + '%');
+        setText('blendActivePctValue', data.activePercent + '%');
+    } else if (mode === 'per-set-blend') {
+        blendCard.hidden = false;
+        blendCard.querySelector('h3').textContent = 'Shared percentages';
+        blendSwatchEl.hidden = true;
+        blendInfoEl.hidden = true;
+        cssBadge.hidden = false;
+        setText('colorSpaceValue', data.colorSpace);
+        setText('blendHoverPctValue', data.hoverPercent + '%');
+        setText('blendActivePctValue', data.activePercent + '%');
+    } else {
+        blendCard.hidden = true;
+        cssBadge.hidden = true;
+    }
+
+    // ── Per-set result groups ────────────────────────────────────────────────
     const container = document.getElementById('resultsContainer');
     container.innerHTML = '';
 
-    sets.forEach((s, i) => {
+    sets.forEach((s) => {
+        const blendHex = mode === 'shared' ? data.blendHex : s.blendHex;
+        const colorSpace = mode === 'independent' ? s.colorSpace : data.colorSpace;
+        const hoverPercent = mode === 'independent' ? s.hoverPercent : data.hoverPercent;
+        const activePercent = mode === 'independent' ? s.activePercent : data.activePercent;
+
         const setDiv = document.createElement('div');
         setDiv.className = 'result-set-group';
-        setDiv.innerHTML = `<div class="result-set-label">${s.name}</div>`;
+
+        if (mode === 'shared') {
+            setDiv.innerHTML = `<div class="result-set-label">${s.name}</div>`;
+        } else {
+            const pctBadges = mode === 'independent'
+                ? `<span class="result-set-pcts">h ${hoverPercent}% · a ${activePercent}%</span>`
+                : '';
+            const spaceBadge = mode === 'independent'
+                ? `<span class="hist-space-badge">${colorSpace}</span>`
+                : '';
+            setDiv.innerHTML = `
+                <div class="result-set-label-row">
+                    <span class="result-set-label">${s.name}</span>
+                    <div class="result-set-blend-row">
+                        <div class="tiny-swatch" style="background:${blendHex}"></div>
+                        <span class="result-blend-hex">${blendHex.toUpperCase()}</span>
+                        <button class="copy-btn" data-copy="${blendHex.toUpperCase()}" title="Copy blend hex">${_COPY_SVG}</button>
+                        ${pctBadges}${spaceBadge}
+                    </div>
+                </div>`;
+        }
 
         const grid = document.createElement('div');
         grid.className = 'states-grid';
 
-        // Hover card
         grid.appendChild(createStateCard({
             tag: 'hover', tagClass: 'tag--hover',
             baseHex: s.baseHex, blendHex, colorSpace,
             targetHex: s.hoverTargetHex, percent: hoverPercent,
             computed: s.hoverComputed, deltaE: s.hoverDeltaE,
         }));
-
-        // Active card
         grid.appendChild(createStateCard({
             tag: 'active', tagClass: 'tag--active',
             baseHex: s.baseHex, blendHex, colorSpace,

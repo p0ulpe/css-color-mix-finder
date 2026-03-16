@@ -103,6 +103,14 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 
 /* ── Result set groups ────────────────────────────────────────────────────── */
 .result-set-group { margin-bottom: 1rem; }
+.result-set-label-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+.result-set-blend-row { display: flex; align-items: center; gap: 0.4rem; }
+.result-blend-hex { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; }
+.result-set-pcts { font-size: 0.75rem; color: var(--text-muted); margin-left: 0.2rem; }
+/* History per-set blend display */
+.hist-multi-blends { display: flex; gap: 2px; }
+.hist-swatch-lbl--muted { color: var(--text-muted); }
+.hist-set-pct-badge { display: inline-flex; align-items: center; gap: 0.15rem; font-size: 0.65rem; color: var(--text-muted); margin-right: 0.2rem; }
 .result-set-label { font-size: 0.8rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; text-transform: capitalize; }
 .btn-calculate { display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; padding: 0.65rem 1.25rem; background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; }
 .btn-calculate:hover { background: var(--accent-hover); }

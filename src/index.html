@@ -29,6 +29,12 @@
                     With 3+ sets and no fixed %, calculation may take ~10–30s. Fixing hover % and/or active % will significantly speed things up.
                 </div>
                 <div class="color-space-row">
+                    <label for="solveModeSelect" class="fix-percent-label">Mode</label>
+                    <select id="solveModeSelect" class="color-space-select">
+                        <option value="shared">Shared blend color</option>
+                        <option value="per-set-blend">Per-set blend, shared %</option>
+                        <option value="independent">Independent per set</option>
+                    </select>
                     <label for="colorSpaceSelect" class="fix-percent-label">Color space</label>
                     <select id="colorSpaceSelect" class="color-space-select">
                         <option value="auto">auto (best fit)</option>

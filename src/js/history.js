@@ -184,6 +184,9 @@ function restoreFromHistory(entry) {
         activeTargetHex: entry.activeTargetHex,
     }];
     restoreSetsToUI(setsData, true);
+    // Restore solve mode
+    const modeSelect = document.getElementById('solveModeSelect');
+    if (modeSelect) modeSelect.value = entry.mode || 'shared';
     // Restore fixed pct if it was stored
     const pctInput = document.getElementById('fixBlendPct');
     if (pctInput) pctInput.value = entry.fixedPct != null ? entry.fixedPct : '';

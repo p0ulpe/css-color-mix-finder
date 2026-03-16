@@ -441,3 +441,149 @@ function solveWithConstraints(baseHex, hoverTargetHex, activeTargetHex, space, f
     }
     return best;
 }
+
+// ── Per-set blend colors with shared hover% and active% ──────────────────────
+// The algorithm finds optimal shared (hoverPercent, activePercent) values, then
+// for each set independently finds the best blend color at those fixed pcts.
+// Returns { hoverPercent, activePercent, totalDeltaE,
+//           sets: [{ blendHex, hoverComputed, hoverDeltaE, activeComputed, activeDeltaE }] }
+function solvePerSetBlendSharedPct(sets, space, fixedHoverPct, fixedActivePct) {
+    space = space || 'oklab';
+
+    // For a single set at fixed (hPct, aPct), find best compromise blend by
+    // linearly interpolating between the two analytical solutions.
+    function bestBlendForSet(s, hPct, aPct) {
+        const hSol = solveBlendColorAtPct(s.baseHex, s.hoverTargetHex, hPct, space);
+        const aSol = solveBlendColorAtPct(s.baseHex, s.activeTargetHex, aPct, space);
+        if (!hSol || !aSol) return null;
+        const rgb1 = hexToRgb(hSol.blendHex), rgb2 = hexToRgb(aSol.blendHex);
+        let best = null, bestDE = Infinity;
+        for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            const cHex = rgbToHex({
+                r: Math.max(0, Math.min(255, Math.round(rgb1.r * (1 - t) + rgb2.r * t))),
+                g: Math.max(0, Math.min(255, Math.round(rgb1.g * (1 - t) + rgb2.g * t))),
+                b: Math.max(0, Math.min(255, Math.round(rgb1.b * (1 - t) + rgb2.b * t))),
+            });
+            const hComp = colorMix(s.baseHex, cHex, hPct, space);
+            const aComp = colorMix(s.baseHex, cHex, aPct, space);
+            const hDE = deltaE(hComp, s.hoverTargetHex);
+            const aDE = deltaE(aComp, s.activeTargetHex);
+            const de = hDE + aDE;
+            if (de < bestDE) {
+                bestDE = de;
+                best = { blendHex: cHex, hoverComputed: hComp, hoverDeltaE: hDE, activeComputed: aComp, activeDeltaE: aDE };
+            }
+        }
+        return best;
+    }
+
+    const COARSE = [1, 7, 14, 21, 28, 36, 44, 53, 62, 71, 80, 89, 97, 100];
+    const hRange = fixedHoverPct != null ? [fixedHoverPct] : COARSE;
+    const aRange = fixedActivePct != null ? [fixedActivePct] : COARSE;
+
+    // Phase 1: coarse scan — use analytical deltaE as proxy score
+    const coarseScores = [];
+    for (const hPct of hRange) {
+        for (const aPct of aRange) {
+            let totalDE = 0, valid = true;
+            for (const s of sets) {
+                const hSol = solveBlendColorAtPct(s.baseHex, s.hoverTargetHex, hPct, space);
+                const aSol = solveBlendColorAtPct(s.baseHex, s.activeTargetHex, aPct, space);
+                if (!hSol || !aSol) { valid = false; break; }
+                totalDE += hSol.deltaE + aSol.deltaE;
+            }
+            if (valid) coarseScores.push({ hPct, aPct, score: totalDE });
+        }
+    }
+    coarseScores.sort((a, b) => a.score - b.score);
+    if (coarseScores.length === 0) return null;
+
+    // Phase 2: fine scan — expand ±5 around top-20 pairs, evaluate properly
+    const pairsToEval = new Map();
+    for (const { hPct, aPct } of coarseScores.slice(0, 20)) {
+        for (let dh = -5; dh <= 5; dh++) {
+            for (let da = -5; da <= 5; da++) {
+                const h = Math.max(1, Math.min(100, hPct + dh));
+                const a = Math.max(1, Math.min(100, aPct + da));
+                pairsToEval.set(h * 1000 + a, { h, a });
+            }
+        }
+    }
+
+    let best = null, bestScore = Infinity;
+    for (const { h: hPct, a: aPct } of pairsToEval.values()) {
+        let totalDE = 0, valid = true;
+        const setResults = [];
+        for (const s of sets) {
+            const res = bestBlendForSet(s, hPct, aPct);
+            if (!res) { valid = false; break; }
+            totalDE += res.hoverDeltaE + res.activeDeltaE;
+            setResults.push(res);
+        }
+        if (valid && totalDE < bestScore) {
+            bestScore = totalDE;
+            best = { hoverPercent: hPct, activePercent: aPct, totalDeltaE: totalDE, sets: setResults };
+        }
+    }
+
+    // Phase 3: tight refinement ±2 around winner
+    if (best) {
+        for (let dh = -2; dh <= 2; dh++) {
+            for (let da = -2; da <= 2; da++) {
+                const hPct = Math.max(1, Math.min(100, best.hoverPercent + dh));
+                const aPct = Math.max(1, Math.min(100, best.activePercent + da));
+                let totalDE = 0, valid = true;
+                const setResults = [];
+                for (const s of sets) {
+                    const res = bestBlendForSet(s, hPct, aPct);
+                    if (!res) { valid = false; break; }
+                    totalDE += res.hoverDeltaE + res.activeDeltaE;
+                    setResults.push(res);
+                }
+                if (valid && totalDE < bestScore) {
+                    bestScore = totalDE;
+                    best = { hoverPercent: hPct, activePercent: aPct, totalDeltaE: totalDE, sets: setResults };
+                }
+            }
+        }
+    }
+
+    return best;
+}
+
+function findBestColorSpacePerSetBlend(sets, forcedSpace, fixedHoverPct, fixedActivePct) {
+    const spaces = forcedSpace ? [forcedSpace] : ['oklab', 'lab', 'srgb'];
+    let best = null, bestScore = Infinity;
+    for (const space of spaces) {
+        try {
+            const result = solvePerSetBlendSharedPct(sets, space, fixedHoverPct, fixedActivePct);
+            if (!result) continue;
+            const worstDE = Math.max(...result.sets.map(s => Math.max(s.hoverDeltaE, s.activeDeltaE)));
+            if (worstDE < bestScore) { bestScore = worstDE; best = { space, result }; }
+        } catch(e) {}
+    }
+    return best;
+}
+
+// ── Fully independent: each set gets its own blend color, hover%, active% ────
+// Returns { sets: [{ space, blendHex, hoverPercent, activePercent,
+//                    hoverComputed, hoverDeltaE, activeComputed, activeDeltaE }] }
+function solveIndependent(sets, forcedSpace, fixedHoverPct, fixedActivePct) {
+    const setResults = [];
+    for (const s of sets) {
+        const sol = findBestColorSpace(s.baseHex, s.hoverTargetHex, s.activeTargetHex, fixedHoverPct, fixedActivePct, forcedSpace);
+        if (!sol) return null;
+        setResults.push({
+            space: sol.space,
+            blendHex: sol.result.blendHex,
+            hoverPercent: sol.result.hoverPercent,
+            activePercent: sol.result.activePercent,
+            hoverComputed: sol.result.hoverComputed,
+            hoverDeltaE: sol.result.hoverDeltaE,
+            activeComputed: sol.result.activeComputed,
+            activeDeltaE: sol.result.activeDeltaE,
+        });
+    }
+    return { sets: setResults };
+}
