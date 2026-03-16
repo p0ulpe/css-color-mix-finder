@@ -59,40 +59,50 @@ function calculate() {
 
     showLoading(true);
 
-    setTimeout(() => {
-        try {
-            const { fixedHoverPct, fixedActivePct } = getFixedPctsFromUI();
-            const best = findBestColorSpaceMultiSet(sets, forcedSpace, fixedHoverPct, fixedActivePct);
-            if (!best) {
-                alert('Could not find a suitable blend color. Try different target colors.');
-                return;
-            }
+    const { fixedHoverPct, fixedActivePct } = getFixedPctsFromUI();
+    const worker = new Worker('js/solver-worker.js');
 
-            const resultData = {
-                blendHex: best.result.blendHex,
-                colorSpace: best.space,
-                hoverPercent: best.result.hoverPercent,
-                activePercent: best.result.activePercent,
-                fixedHoverPct: fixedHoverPct,
-                fixedActivePct: fixedActivePct,
-                sets: sets.map((s, i) => ({
-                    name: s.name,
-                    baseHex: s.baseHex,
-                    hoverTargetHex: s.hoverTargetHex,
-                    activeTargetHex: s.activeTargetHex,
-                    hoverComputed: best.result.sets[i].hoverComputed,
-                    hoverDeltaE: best.result.sets[i].hoverDeltaE,
-                    activeComputed: best.result.sets[i].activeComputed,
-                    activeDeltaE: best.result.sets[i].activeDeltaE,
-                })),
-            };
-            renderResults(resultData);
-            addHistoryEntry(resultData);
-        } catch(err) {
-            console.error(err);
+    worker.onmessage = function(e) {
+        worker.terminate();
+        showLoading(false);
+        const { ok, result: best, error } = e.data;
+        if (!ok) {
+            console.error(error);
             alert('An error occurred. Check the console for details.');
-        } finally {
-            showLoading(false);
+            return;
         }
-    }, 50);
+        if (!best) {
+            alert('Could not find a suitable blend color. Try different target colors.');
+            return;
+        }
+        const resultData = {
+            blendHex: best.result.blendHex,
+            colorSpace: best.space,
+            hoverPercent: best.result.hoverPercent,
+            activePercent: best.result.activePercent,
+            fixedHoverPct: fixedHoverPct,
+            fixedActivePct: fixedActivePct,
+            sets: sets.map((s, i) => ({
+                name: s.name,
+                baseHex: s.baseHex,
+                hoverTargetHex: s.hoverTargetHex,
+                activeTargetHex: s.activeTargetHex,
+                hoverComputed: best.result.sets[i].hoverComputed,
+                hoverDeltaE: best.result.sets[i].hoverDeltaE,
+                activeComputed: best.result.sets[i].activeComputed,
+                activeDeltaE: best.result.sets[i].activeDeltaE,
+            })),
+        };
+        renderResults(resultData);
+        addHistoryEntry(resultData);
+    };
+
+    worker.onerror = function(err) {
+        worker.terminate();
+        showLoading(false);
+        console.error(err);
+        alert('An error occurred. Check the console for details.');
+    };
+
+    worker.postMessage({ sets, forcedSpace, fixedHoverPct, fixedActivePct });
 }

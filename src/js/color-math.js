@@ -1,7 +1,21 @@
+// ── Memoization caches (cleared per solver run via clearColorCaches) ──
+const _hexRgbCache = new Map();
+const _hexLabCache = new Map();
+const _hexOklabCache = new Map();
+const _colorMixCache = new Map();
+const _deltaECache = new Map();
+function clearColorCaches() {
+    _hexRgbCache.clear(); _hexLabCache.clear(); _hexOklabCache.clear();
+    _colorMixCache.clear(); _deltaECache.clear();
+}
+
 function hexToRgb(hex) {
+    if (_hexRgbCache.has(hex)) return _hexRgbCache.get(hex);
     const clean = hex.replace('#', '');
     const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
-    return { r: parseInt(full.slice(0,2),16), g: parseInt(full.slice(2,4),16), b: parseInt(full.slice(4,6),16) };
+    const result = { r: parseInt(full.slice(0,2),16), g: parseInt(full.slice(2,4),16), b: parseInt(full.slice(4,6),16) };
+    _hexRgbCache.set(hex, result);
+    return result;
 }
 function rgbToHex({r, g, b}) {
     return '#' + [r,g,b].map(v => Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
@@ -65,39 +79,58 @@ function oklabToRgb({l, a, b}) {
         b: fromLinear(-0.0041960863*lr - 0.7034186147*mg + 1.7076147010*sb),
     };
 }
+function _hexToLab(hex) {
+    if (_hexLabCache.has(hex)) return _hexLabCache.get(hex);
+    const lab = xyzToLab(rgbToXyz(hexToRgb(hex)));
+    _hexLabCache.set(hex, lab);
+    return lab;
+}
+function _hexToOklab(hex) {
+    if (_hexOklabCache.has(hex)) return _hexOklabCache.get(hex);
+    const ok = rgbToOklab(hexToRgb(hex));
+    _hexOklabCache.set(hex, ok);
+    return ok;
+}
 function deltaE(hex1, hex2) {
-    const lab1 = xyzToLab(rgbToXyz(hexToRgb(hex1)));
-    const lab2 = xyzToLab(rgbToXyz(hexToRgb(hex2)));
-    return Math.sqrt(
+    const key = hex1 + '|' + hex2;
+    if (_deltaECache.has(key)) return _deltaECache.get(key);
+    const lab1 = _hexToLab(hex1), lab2 = _hexToLab(hex2);
+    const result = Math.sqrt(
         Math.pow(lab1.l-lab2.l,2) + Math.pow(lab1.a-lab2.a,2) + Math.pow(lab1.b-lab2.b,2)
     );
+    _deltaECache.set(key, result);
+    return result;
 }
 // Implements CSS color-mix(in space, hex1 100%, hex2 percent%)
 // CSS normalises: effective blend fraction = percent / (100 + percent)
 function colorMix(hex1, hex2, percent, space) {
     space = space || 'oklab';
+    const key = hex1 + '|' + hex2 + '|' + percent + '|' + space;
+    if (_colorMixCache.has(key)) return _colorMixCache.get(key);
     const t = percent / (100 + percent);
-    const rgb1 = hexToRgb(hex1), rgb2 = hexToRgb(hex2);
+    let result;
     if (space === 'srgb') {
-        return rgbToHex({ r: rgb1.r*(1-t)+rgb2.r*t, g: rgb1.g*(1-t)+rgb2.g*t, b: rgb1.b*(1-t)+rgb2.b*t });
-    }
-    if (space === 'lab') {
-        const lab1 = xyzToLab(rgbToXyz(rgb1)), lab2 = xyzToLab(rgbToXyz(rgb2));
-        return rgbToHex(xyzToRgb(labToXyz({
+        const rgb1 = hexToRgb(hex1), rgb2 = hexToRgb(hex2);
+        result = rgbToHex({ r: rgb1.r*(1-t)+rgb2.r*t, g: rgb1.g*(1-t)+rgb2.g*t, b: rgb1.b*(1-t)+rgb2.b*t });
+    } else if (space === 'lab') {
+        const lab1 = _hexToLab(hex1), lab2 = _hexToLab(hex2);
+        result = rgbToHex(xyzToRgb(labToXyz({
             l: lab1.l*(1-t)+lab2.l*t,
             a: lab1.a*(1-t)+lab2.a*t,
             b: lab1.b*(1-t)+lab2.b*t
         })));
-    }
-    if (space === 'oklab') {
-        const ok1 = rgbToOklab(rgb1), ok2 = rgbToOklab(rgb2);
-        return rgbToHex(oklabToRgb({
+    } else if (space === 'oklab') {
+        const ok1 = _hexToOklab(hex1), ok2 = _hexToOklab(hex2);
+        result = rgbToHex(oklabToRgb({
             l: ok1.l*(1-t)+ok2.l*t,
             a: ok1.a*(1-t)+ok2.a*t,
             b: ok1.b*(1-t)+ok2.b*t
         }));
+    } else {
+        throw new Error('Unknown color space: ' + space);
     }
-    throw new Error('Unknown color space: ' + space);
+    _colorMixCache.set(key, result);
+    return result;
 }
 function isValidHex(hex) {
     return /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex.trim());

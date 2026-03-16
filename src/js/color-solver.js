@@ -193,34 +193,55 @@ function solveMultiSet(sets, space, fixedHoverPct, fixedActivePct) {
     }
 
     // Helper: evaluate a candidate, returns { hPct, aPct, worstDE, setResults, totalDeltaE }
-    const fineHover = fixedHoverPct != null ? [fixedHoverPct] : Array.from({ length: 100 }, (_, i) => i + 1);
-    const fineActive = fixedActivePct != null ? [fixedActivePct] : Array.from({ length: 100 }, (_, i) => i + 1);
+    // Two-phase percent search: 14 coarse probes then ±8 fine around best
+    const COARSE_PCTS = [1, 7, 14, 21, 28, 36, 44, 53, 62, 71, 80, 89, 97, 100];
 
     function evaluateCandidate(candidateHex) {
-        let bestHPct = null, bestHWorst = Infinity;
-        for (const hPct of fineHover) {
-            let worstDE = 0;
-            for (const s of sets) { const dE = deltaE(colorMix(s.baseHex, candidateHex, hPct, space), s.hoverTargetHex); if (dE > worstDE) worstDE = dE; }
-            if (worstDE < bestHWorst) { bestHWorst = worstDE; bestHPct = hPct; }
+        function bestPctFor(targets, state) {
+            const pcts = fixedHoverPct != null && state === 'hover' ? [fixedHoverPct]
+                       : fixedActivePct != null && state === 'active' ? [fixedActivePct]
+                       : null;
+            const targetHexes = targets;
+            // Coarse pass
+            let coarseBest = 1, coarseBestWorst = Infinity;
+            const coarse = pcts || COARSE_PCTS;
+            for (const p of coarse) {
+                let worst = 0;
+                for (const s of sets) {
+                    const dE = deltaE(colorMix(s.baseHex, candidateHex, p, space), state === 'hover' ? s.hoverTargetHex : s.activeTargetHex);
+                    if (dE > worst) worst = dE;
+                }
+                if (worst < coarseBestWorst) { coarseBestWorst = worst; coarseBest = p; }
+            }
+            if (pcts) return { pct: coarseBest, worst: coarseBestWorst };
+            // Fine pass: ±8 around coarse best
+            let bestWorst = Infinity, bestPct = coarseBest;
+            const lo = Math.max(1, coarseBest - 8), hi = Math.min(100, coarseBest + 8);
+            for (let p = lo; p <= hi; p++) {
+                let worst = 0;
+                for (const s of sets) {
+                    const dE = deltaE(colorMix(s.baseHex, candidateHex, p, space), state === 'hover' ? s.hoverTargetHex : s.activeTargetHex);
+                    if (dE > worst) worst = dE;
+                }
+                if (worst < bestWorst) { bestWorst = worst; bestPct = p; }
+            }
+            return { pct: bestPct, worst: bestWorst };
         }
-        let bestAPct = null, bestAWorst = Infinity;
-        for (const aPct of fineActive) {
-            let worstDE = 0;
-            for (const s of sets) { const dE = deltaE(colorMix(s.baseHex, candidateHex, aPct, space), s.activeTargetHex); if (dE > worstDE) worstDE = dE; }
-            if (worstDE < bestAWorst) { bestAWorst = worstDE; bestAPct = aPct; }
-        }
-        const worstDE = Math.max(bestHWorst, bestAWorst);
+
+        const h = bestPctFor(sets.map(s => s.hoverTargetHex), 'hover');
+        const a = bestPctFor(sets.map(s => s.activeTargetHex), 'active');
+        const worstDE = Math.max(h.worst, a.worst);
         const setResults = [];
         let totalDeltaE = 0;
         for (const s of sets) {
-            const hComp = colorMix(s.baseHex, candidateHex, bestHPct, space);
-            const aComp = colorMix(s.baseHex, candidateHex, bestAPct, space);
+            const hComp = colorMix(s.baseHex, candidateHex, h.pct, space);
+            const aComp = colorMix(s.baseHex, candidateHex, a.pct, space);
             const hDE = deltaE(hComp, s.hoverTargetHex);
             const aDE = deltaE(aComp, s.activeTargetHex);
             totalDeltaE += hDE + aDE;
             setResults.push({ hoverComputed: hComp, hoverDeltaE: hDE, activeComputed: aComp, activeDeltaE: aDE });
         }
-        return { hPct: bestHPct, aPct: bestAPct, worstDE, setResults, totalDeltaE };
+        return { hPct: h.pct, aPct: a.pct, worstDE, setResults, totalDeltaE };
     }
 
     // ── Phase 1: coarse scan to rank candidates ──
@@ -262,6 +283,7 @@ function solveMultiSet(sets, space, fixedHoverPct, fixedActivePct) {
     if (best) {
         const radii = [10, 6, 3];  // progressively tighter
         for (const radius of radii) {
+            if (bestScore < 0.5) break; // already near-perfect
             const rgb = hexToRgb(best.blendHex);
             const step = radius > 6 ? 2 : 1;
             const refinedCandidates = new Set();
@@ -278,6 +300,7 @@ function solveMultiSet(sets, space, fixedHoverPct, fixedActivePct) {
                 if (ev.worstDE < bestScore) {
                     bestScore = ev.worstDE;
                     best = { blendHex: candidateHex, hoverPercent: ev.hPct, activePercent: ev.aPct, totalDeltaE: ev.totalDeltaE, sets: ev.setResults };
+                    if (bestScore < 0.5) break;
                 }
             }
         }
@@ -285,6 +308,7 @@ function solveMultiSet(sets, space, fixedHoverPct, fixedActivePct) {
         // Also explore around top-5 finalists (may find a different basin)
         const topHexes = finalists.slice(0, 5).map(f => f.hex);
         for (const hex of topHexes) {
+            if (bestScore < 0.5) break; // already near-perfect
             if (hex === best.blendHex) continue;
             const rgb = hexToRgb(hex);
             const refinedCandidates = new Set();
@@ -301,6 +325,7 @@ function solveMultiSet(sets, space, fixedHoverPct, fixedActivePct) {
                 if (ev.worstDE < bestScore) {
                     bestScore = ev.worstDE;
                     best = { blendHex: candidateHex, hoverPercent: ev.hPct, activePercent: ev.aPct, totalDeltaE: ev.totalDeltaE, sets: ev.setResults };
+                    if (bestScore < 0.5) break;
                 }
             }
         }
