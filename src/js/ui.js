@@ -109,6 +109,8 @@ function updateRemoveButtons() {
     rows.forEach(r => {
         r.querySelector('.set-remove-btn').style.visibility = rows.length > 1 ? 'visible' : 'hidden';
     });
+    const warn = document.getElementById('perfWarning');
+    if (warn) warn.hidden = rows.length < 3;
 }
 
 function addSet(data) {
