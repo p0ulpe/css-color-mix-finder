@@ -58,6 +58,6 @@ Note: the test suite (`tests/`) currently uses ES module `import` syntax while t
 
 ## License
 
-GPL v3 — free to use and modify, but any distribution must remain open source.
+MIT
 
 
