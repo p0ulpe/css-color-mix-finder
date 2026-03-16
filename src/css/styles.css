@@ -36,7 +36,7 @@
 :root.light .hist-item { background: #f3f4f8; }
 :root.light .hist-item:hover { background: #eaecf8; }
 :root.light .set-row { background: #f3f4f8; }
-:root.light .set-name-input { color: var(--text); }
+:root.light .set-label-input { color: var(--text); }
 :root.light .history-count { background: #f3f4f8; }
 :root.light .fix-percent-input { background: #f3f4f8; }
 
@@ -70,7 +70,8 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 .fix-percent-input { width: 72px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: var(--font-mono); font-size: 0.82rem; padding: 0.25rem 0.5rem; outline: none; transition: border-color 0.15s; }
 .fix-percent-input:focus { border-color: var(--accent); }
 .fix-percent-input::placeholder { color: var(--text-muted); opacity: 0.6; }
-.color-space-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+.color-space-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem; margin-bottom: 1rem; }
+.ctrl-group { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
 .color-space-select { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: var(--font-mono); font-size: 0.82rem; padding: 0.25rem 0.5rem; outline: none; cursor: pointer; transition: border-color 0.15s; }
 .color-space-select:focus { border-color: var(--accent); }
 .tag--fixed { background: #1e3a2d; color: #4ade80; font-size: 0.65rem; padding: 0.1em 0.45em; letter-spacing: 0.03em; border-radius: 999px; margin-left: 0.3rem; font-weight: 700; }
@@ -80,6 +81,7 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 /* ── Section header with Add button ───────────────────────────────────────── */
 .section-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
 .section-header-row h2 { margin-bottom: 0; }
+.sets-actions-row { display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; }
 .btn-add-set { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.7rem; background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 0.78rem; font-weight: 500; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
 .btn-add-set:hover { color: var(--accent); border-color: var(--accent); }
 
@@ -87,8 +89,8 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 #setsContainer { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem; }
 .set-row { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.6rem 0.6rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .set-name-col { display: flex; align-items: center; flex-shrink: 0; min-width: 80px; }
-.set-name-input { width: 80px; background: transparent; border: 1px solid transparent; border-radius: 4px; color: var(--text); font-size: 0.78rem; font-weight: 600; padding: 0.2rem 0.3rem; outline: none; transition: border-color 0.15s; }
-.set-name-input:focus { border-color: var(--accent); }
+.set-label-input { width: 80px; background: transparent; border: 1px solid transparent; border-radius: 4px; color: var(--text); font-size: 0.78rem; font-weight: 600; padding: 0.2rem 0.3rem; outline: none; transition: border-color 0.15s; }
+.set-label-input:focus { border-color: var(--accent); }
 .set-color-col { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; min-width: 0; }
 .set-col-label { font-size: 0.68rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem; }
 .set-col-label .tag { font-size: 0.58rem; padding: 0.08em 0.35em; }
@@ -110,9 +112,9 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 /* History per-set blend display */
 .hist-multi-blends { display: flex; gap: 2px; }
 .hist-swatch-lbl--muted { color: var(--text-muted); }
-.hist-set-pct-badge { display: inline-flex; align-items: center; gap: 0.15rem; font-size: 0.65rem; color: var(--text-muted); margin-right: 0.2rem; }
+.hist-set-pct-badge { display: inline-flex; align-items: center; gap: 0.15rem; font-size: 0.65rem; color: var(--text-muted); min-width: 48px; }
 .result-set-label { font-size: 0.8rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; text-transform: capitalize; }
-.btn-calculate { display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; padding: 0.65rem 1.25rem; background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; }
+.btn-calculate { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; white-space: nowrap; }
 .btn-calculate:hover { background: var(--accent-hover); }
 .btn-calculate:active { transform: scale(0.98); }
 .btn-calculate:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -249,6 +251,7 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 .hist-state-col .tag { font-size: 0.58rem; padding: 0.1em 0.4em; }
 .hist-state-row { display: flex; align-items: center; gap: 5px; }
 .hist-pct { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); letter-spacing: 0.02em; white-space: nowrap; }
+.hist-tag-col { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
 .hist-tag-row { display: flex; align-items: center; gap: 0.35rem; }
 .hist-delta { font-family: var(--font-mono); font-size: 0.58rem; font-weight: 600; }
 .hist-delta.good { color: #4ade80; }

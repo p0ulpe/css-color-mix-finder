@@ -85,10 +85,10 @@ function createHistoryItemHTML(e) {
     </div>`;
 
     const pctHTML = mode === 'independent'
-        ? `<span class="hist-pct" style="opacity:0.4"><span class="tag tag--hover">h</span>—</span>
-    <span class="hist-pct" style="opacity:0.4"><span class="tag tag--active">a</span>—</span>`
-        : `<span class="hist-pct"><span class="tag tag--hover">h</span>${hPct}%</span>
-    <span class="hist-pct"><span class="tag tag--active">a</span>${aPct}%</span>`;
+        ? `<span class="hist-pct" style="opacity:0.4"><span class="tag tag--hover">1</span>—</span>
+    <span class="hist-pct" style="opacity:0.4"><span class="tag tag--active">2</span>—</span>`
+        : `<span class="hist-pct"><span class="tag tag--hover">1</span>${hPct}%</span>
+    <span class="hist-pct"><span class="tag tag--active">2</span>${aPct}%</span>`;
 
     const spaceHTML = mode === 'independent'
         ? `<div class="hist-space-badge">per-set</div>`
@@ -99,7 +99,7 @@ function createHistoryItemHTML(e) {
             ? `<div class="hist-swatch hist-swatch--blend" style="background:${s.blendHex}" data-tooltip="Blend ${s.blendHex.toUpperCase()}"></div>`
             : '';
         const setPercentBadges = mode === 'independent'
-            ? `<span class="hist-set-pct-badge"><span class="tag tag--hover">h</span>${s.hoverPercent || '?'}%</span><span class="hist-set-pct-badge"><span class="tag tag--active">a</span>${s.activePercent || '?'}%</span>`
+            ? `<span class="hist-set-pct-badge"><span class="tag tag--hover">1</span>${s.hoverPercent || '?'}%</span><span class="hist-set-pct-badge"><span class="tag tag--active">2</span>${s.activePercent || '?'}%</span>`
             : '';
         return `
         <div class="hist-set-line">
@@ -110,23 +110,23 @@ function createHistoryItemHTML(e) {
             <div class="hist-state-col">
                 <div class="hist-state-row">
                     <div class="hist-overlay-wrap">
-                        <div class="hist-swatch hist-swatch--state" style="background:${s.hoverTargetHex}" data-tooltip="Target ${s.hoverTargetHex ? s.hoverTargetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${s.hoverComputed}" data-tooltip="Result ${s.hoverComputed ? s.hoverComputed.toUpperCase() : ''}"></div>
+                        <div class="hist-swatch hist-swatch--state" style="background:${s.hoverTargetHex}" data-tooltip="Target 1 ${s.hoverTargetHex ? s.hoverTargetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${s.hoverComputed}" data-tooltip="Result ${s.hoverComputed ? s.hoverComputed.toUpperCase() : ''}"></div>
                     </div>
-                </div>
-                <div class="hist-tag-row">
-                    <span class="tag tag--hover">hover</span>
-                    <span class="hist-delta ${deltaEClass(s.hoverDeltaE)}">${s.hoverDeltaE != null ? s.hoverDeltaE.toFixed(1) : '?'}</span>
+                    <div class="hist-tag-col">
+                        <span class="tag tag--hover">1</span>
+                        <span class="hist-delta ${deltaEClass(s.hoverDeltaE)}">${s.hoverDeltaE != null ? s.hoverDeltaE.toFixed(1) : '?'}</span>
+                    </div>
                 </div>
             </div>
             <div class="hist-state-col">
                 <div class="hist-state-row">
                     <div class="hist-overlay-wrap">
-                        <div class="hist-swatch hist-swatch--state" style="background:${s.activeTargetHex}" data-tooltip="Target ${s.activeTargetHex ? s.activeTargetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${s.activeComputed}" data-tooltip="Result ${s.activeComputed ? s.activeComputed.toUpperCase() : ''}"></div>
+                        <div class="hist-swatch hist-swatch--state" style="background:${s.activeTargetHex}" data-tooltip="Target 2 ${s.activeTargetHex ? s.activeTargetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${s.activeComputed}" data-tooltip="Result ${s.activeComputed ? s.activeComputed.toUpperCase() : ''}"></div>
                     </div>
-                </div>
-                <div class="hist-tag-row">
-                    <span class="tag tag--active">active</span>
-                    <span class="hist-delta ${deltaEClass(s.activeDeltaE)}">${s.activeDeltaE != null ? s.activeDeltaE.toFixed(1) : '?'}</span>
+                    <div class="hist-tag-col">
+                        <span class="tag tag--active">2</span>
+                        <span class="hist-delta ${deltaEClass(s.activeDeltaE)}">${s.activeDeltaE != null ? s.activeDeltaE.toFixed(1) : '?'}</span>
+                    </div>
                 </div>
             </div>
         </div>`;

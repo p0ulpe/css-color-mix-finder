@@ -45,11 +45,9 @@ function syncColorInputs(textInput, pickerInput, preview) {
 
 let setCounter = 0;
 
-const DEFAULT_SET_NAMES = ['primary', 'secondary', 'tertiary', 'quaternary'];
-
 function createSetRow(data) {
     const idx = setCounter++;
-    const name = (data && data.name) || DEFAULT_SET_NAMES[document.querySelectorAll('.set-row').length] || 'set ' + (document.querySelectorAll('.set-row').length + 1);
+    const name = (data && data.name) || `Set ${document.querySelectorAll('.set-row').length + 1}`;
     const baseVal = (data && data.baseHex) || '#e0001a';
     const hoverVal = (data && data.hoverTargetHex) || '#c20017';
     const activeVal = (data && data.activeTargetHex) || '#940011';
@@ -59,7 +57,7 @@ function createSetRow(data) {
     row.dataset.setIdx = idx;
     row.innerHTML = `
         <div class="set-name-col">
-            <input type="text" class="set-name-input" value="${name}" placeholder="name" spellcheck="false">
+            <input type="text" id="set-label-${idx}" name="set-label-${idx}" class="set-label-input" value="${name}" placeholder="label" spellcheck="false" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" data-bwignore role="presentation">
         </div>
         <div class="set-color-col">
             <span class="set-col-label">base <span class="tag">default</span></span>
@@ -70,7 +68,7 @@ function createSetRow(data) {
             <div class="color-preview set-base-preview"></div>
         </div>
         <div class="set-color-col">
-            <span class="set-col-label">target <span class="tag tag--hover">hover</span></span>
+            <span class="set-col-label">target color <span class="tag tag--hover">1</span></span>
             <div class="color-input-group compact">
                 <input type="color" class="set-hover-picker" value="${normalizeHex(hoverVal)}">
                 <input type="text" class="set-hover-text" value="${normalizeHex(hoverVal)}" placeholder="#hex">
@@ -78,7 +76,7 @@ function createSetRow(data) {
             <div class="color-preview set-hover-preview"></div>
         </div>
         <div class="set-color-col">
-            <span class="set-col-label">target <span class="tag tag--active">active</span></span>
+            <span class="set-col-label">target color <span class="tag tag--active">2</span></span>
             <div class="color-input-group compact">
                 <input type="color" class="set-active-picker" value="${normalizeHex(activeVal)}">
                 <input type="text" class="set-active-text" value="${normalizeHex(activeVal)}" placeholder="#hex">
@@ -126,7 +124,7 @@ function getSetsFromUI() {
         const baseHex = normalizeHex(row.querySelector('.set-base-text').value.trim());
         const hoverTargetHex = normalizeHex(row.querySelector('.set-hover-text').value.trim());
         const activeTargetHex = normalizeHex(row.querySelector('.set-active-text').value.trim());
-        const name = row.querySelector('.set-name-input').value.trim() || 'set';
+        const name = row.querySelector('.set-label-input').value.trim() || 'set';
         sets.push({ name, baseHex, hoverTargetHex, activeTargetHex });
     }
     return sets;
@@ -239,13 +237,13 @@ function renderResults(data) {
         grid.className = 'states-grid';
 
         grid.appendChild(createStateCard({
-            tag: 'hover', tagClass: 'tag--hover',
+            tag: 'target 1', tagClass: 'tag--hover',
             baseHex: s.baseHex, blendHex, colorSpace,
             targetHex: s.hoverTargetHex, percent: hoverPercent,
             computed: s.hoverComputed, deltaE: s.hoverDeltaE,
         }));
         grid.appendChild(createStateCard({
-            tag: 'active', tagClass: 'tag--active',
+            tag: 'target 2', tagClass: 'tag--active',
             baseHex: s.baseHex, blendHex, colorSpace,
             targetHex: s.activeTargetHex, percent: activePercent,
             computed: s.activeComputed, deltaE: s.activeDeltaE,

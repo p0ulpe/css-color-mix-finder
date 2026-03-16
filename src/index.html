@@ -19,39 +19,49 @@
             <section class="input-section card">
                 <div class="section-header-row">
                     <h2>Color sets</h2>
+                </div>
+                <div id="perfWarning" class="perf-warning" hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    With 3+ sets and no fixed %, calculation may take ~10–30s. Fixing target 1 % and/or target 2 % will significantly speed things up.
+                </div>
+                <div class="color-space-row">
+                    <div class="ctrl-group">
+                        <label for="solveModeSelect" class="fix-percent-label">Mode</label>
+                        <select id="solveModeSelect" class="color-space-select">
+                            <option value="shared">Shared blend color</option>
+                            <option value="per-set-blend">Per-set blend, shared %</option>
+                            <option value="independent">Independent per set</option>
+                        </select>
+                    </div>
+                    <div class="ctrl-group">
+                        <label for="colorSpaceSelect" class="fix-percent-label">Color space</label>
+                        <select id="colorSpaceSelect" class="color-space-select">
+                            <option value="auto">auto (best fit)</option>
+                            <option value="oklab">oklab</option>
+                            <option value="lab">lab</option>
+                            <option value="srgb">srgb</option>
+                        </select>
+                    </div>
+                    <div class="ctrl-group">
+                        <label for="fixHoverPct" class="fix-percent-label">Fix target 1 %</label>
+                        <input type="number" id="fixHoverPct" class="fix-percent-input" min="1" max="100" placeholder="auto">
+                    </div>
+                    <div class="ctrl-group">
+                        <label for="fixActivePct" class="fix-percent-label">Fix target 2 %</label>
+                        <input type="number" id="fixActivePct" class="fix-percent-input" min="1" max="100" placeholder="auto">
+                    </div>
+                </div>
+                <div id="setsContainer"></div>
+                <div class="sets-actions-row">
                     <button class="btn-add-set" id="addSetBtn" title="Add color set">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
                         Add set
                     </button>
+                    <button id="calculateBtn" class="btn-calculate">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        Find blend color
+                    </button>
                 </div>
-                <div id="perfWarning" class="perf-warning" hidden>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    With 3+ sets and no fixed %, calculation may take ~10–30s. Fixing hover % and/or active % will significantly speed things up.
-                </div>
-                <div class="color-space-row">
-                    <label for="solveModeSelect" class="fix-percent-label">Mode</label>
-                    <select id="solveModeSelect" class="color-space-select">
-                        <option value="shared">Shared blend color</option>
-                        <option value="per-set-blend">Per-set blend, shared %</option>
-                        <option value="independent">Independent per set</option>
-                    </select>
-                    <label for="colorSpaceSelect" class="fix-percent-label">Color space</label>
-                    <select id="colorSpaceSelect" class="color-space-select">
-                        <option value="auto">auto (best fit)</option>
-                        <option value="oklab">oklab</option>
-                        <option value="lab">lab</option>
-                        <option value="srgb">srgb</option>
-                    </select>
-                    <label for="fixHoverPct" class="fix-percent-label">Fix hover %</label>
-                    <input type="number" id="fixHoverPct" class="fix-percent-input" min="1" max="100" placeholder="auto">
-                    <label for="fixActivePct" class="fix-percent-label">Fix active %</label>
-                    <input type="number" id="fixActivePct" class="fix-percent-input" min="1" max="100" placeholder="auto">
-                </div>
-                <div id="setsContainer"></div>
-                <button id="calculateBtn" class="btn-calculate">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                    Find blend color
-                </button>
             </section>
 
             <section class="results-section" id="resultsSection" hidden>
@@ -75,11 +85,11 @@
                         </div>
                         <div class="blend-pct-badges">
                             <div class="blend-pct-badge">
-                                <span class="badge-label">hover %</span>
+                                <span class="badge-label">target 1 %</span>
                                 <span class="badge-value" id="blendHoverPctValue">—</span>
                             </div>
                             <div class="blend-pct-badge">
-                                <span class="badge-label">active %</span>
+                                <span class="badge-label">target 2 %</span>
                                 <span class="badge-value" id="blendActivePctValue">—</span>
                             </div>
                         </div>
