@@ -341,7 +341,7 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 .hist-summary-row { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.4rem; }
 .hist-summary-badge { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.6rem; font-weight: 500; color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 8%, transparent); border: 1px solid color-mix(in srgb, var(--text-muted) 18%, transparent); border-radius: 999px; padding: 0.15em 0.55em; white-space: nowrap; }
 .hist-summary-badge .tag { font-size: 0.55rem; padding: 0.1em; min-width: 1.5em; text-align: center; }
-.hist-space-badge--inline { font-size: 0.55rem; padding: 0.1em 0.45em; }
+.hist-space-badge--inline { font-size: 0.55rem; padding: 0.1em 0.45em; min-width: 2.8em; justify-content: center; }
 
 /* Flash animation when inputs are restored from history */
 @keyframes hist-restore-flash { 0%,100% { border-color: var(--border); } 50% { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110,123,255,0.15); } }
