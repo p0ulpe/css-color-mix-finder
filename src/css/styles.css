@@ -1103,6 +1103,7 @@ button:focus-visible {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding-top: 2px;
+  min-width: 0;
 }
 .hist-item:hover {
   background: #1e2030;
@@ -1369,6 +1370,8 @@ button:focus-visible {
   align-items: center;
   gap: 0.6rem;
   padding: 0.2rem 0;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 .hist-set-name {
   font-size: 0.65rem;
@@ -1395,6 +1398,7 @@ button:focus-visible {
   gap: 0.6rem;
   margin-bottom: -4px;
   padding-top: 8px;
+  flex-wrap: nowrap;
 }
 .hist-ghost {
   visibility: hidden;
@@ -1597,14 +1601,11 @@ button:focus-visible {
     order: 12;
   }
   .hist-set-line {
-    flex-wrap: wrap;
     row-gap: 0.4rem;
     align-items: flex-start;
   }
   .hist-set-break {
-    display: block;
-    width: 100%;
-    height: 0;
+    display: none;
     flex-shrink: 0;
   }
   .hist-set-name {
