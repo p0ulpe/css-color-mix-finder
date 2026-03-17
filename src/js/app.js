@@ -84,6 +84,7 @@ function calculate() {
             resultData = {
                 mode,
                 colorSpace: best.space,
+                fixedSpace: forcedSpace || null,
                 hoverPercent: best.result.hoverPercent,
                 activePercent: best.result.activePercent,
                 percents,
@@ -111,6 +112,7 @@ function calculate() {
         } else if (mode === 'independent') {
             resultData = {
                 mode,
+                fixedSpace: forcedSpace || null,
                 fixedHoverPct,
                 fixedActivePct,
                 sets: sets.map((s, i) => {
@@ -145,6 +147,7 @@ function calculate() {
                 mode: 'shared',
                 blendHex: best.result.blendHex,
                 colorSpace: best.space,
+                fixedSpace: forcedSpace || null,
                 hoverPercent: best.result.hoverPercent,
                 activePercent: best.result.activePercent,
                 percents,

@@ -187,6 +187,24 @@ function createHistoryItemHTML(e) {
   </div>`
         : `<div class="hist-sets">${pctHeaderRowHTML}${setLines}</div>`;
 
+    // Summary badges: summarise what was fixed/shared during the search
+    const tagClsListBadge = ['tag--hover', 'tag--active', 'tag--t3', 'tag--t4', 'tag--t5'];
+    const summaryBadges = [];
+    if (mode === 'shared') summaryBadges.push(`<span class="hist-summary-badge">Shared blend color</span>`);
+    if (mode === 'shared' || mode === 'per-set-blend') summaryBadges.push(`<span class="hist-summary-badge">Shared %</span>`);
+    if (e.fixedSpace) summaryBadges.push(`<span class="hist-summary-badge">Fixed color space</span>`);
+    // Fixed % per target index (fixedHoverPct = index 0, fixedActivePct = index 1; generalise via percents array)
+    const fixedPcts = [e.fixedHoverPct, e.fixedActivePct];
+    fixedPcts.forEach((fp, i) => {
+        if (fp != null && fp !== '' && fp !== false) {
+            const tc = tagClsListBadge[i] || 'tag--t5';
+            summaryBadges.push(`<span class="hist-summary-badge">Fixed % <span class="tag ${tc}">${i + 1}</span></span>`);
+        }
+    });
+    const summaryHTML = summaryBadges.length
+        ? `<div class="hist-summary-row">${summaryBadges.join('')}</div>`
+        : '';
+
     return `
 <div class="hist-item${pinCls}" data-id="${e.id}" data-mode="${mode}">
   <div class="hist-top-row">
@@ -202,6 +220,7 @@ function createHistoryItemHTML(e) {
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
     </button>
   </div>
+  ${summaryHTML}
   ${bodyHTML}
 </div>`;
 }
