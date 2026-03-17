@@ -121,7 +121,14 @@
           </div>
         </section>
 
-        <section class="results-section" id="resultsSection" hidden>
+        <section
+          class="results-section"
+          id="resultsSection"
+          role="region"
+          aria-label="Results"
+          aria-live="polite"
+          hidden
+        >
           <div class="result-header">
             <h2>Results</h2>
             <div class="color-space-badge">
@@ -163,7 +170,7 @@
         </section>
 
         <!-- ── History ─────────────────────────────────────────────── -->
-        <section class="history-section card" id="historySection" hidden>
+        <section class="history-section card" id="historySection" role="region" aria-label="History" hidden>
           <div class="history-header">
             <h2>History</h2>
             <span class="history-count" id="historyCount"></span>

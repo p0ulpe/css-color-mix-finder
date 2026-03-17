@@ -162,9 +162,11 @@ function createHistoryItemHTML(e) {
             ghostLeft = `<span class="hist-set-name hist-ghost" aria-hidden="true"></span><div class="hist-space-badge-wrap hist-ghost" aria-hidden="true"></div><div class="hist-swatch hist-ghost" aria-hidden="true"></div>`;
         }
         // Each pct col uses a ghost state-row (height:0) to match state-col width exactly
-        const pctItems = sharedPcts.map((p, i) =>
-            `<div class="hist-pct-header-col"><div class="hist-state-row hist-ghost" aria-hidden="true"><div class="hist-overlay-wrap"><div class="hist-swatch hist-swatch--state"></div><div class="hist-swatch hist-swatch--result"></div></div><div class="hist-tag-col"><span class="hist-delta">0.0</span></div></div><span class="hist-pct-header"><span class="tag ${tagClsList[i] || 'tag--t5'}">${i + 1}</span>${p != null ? p + '%' : ''}</span></div>`
-        ).join('');
+        // For variable-pct cols (p===null, independent mode) also ghost the pct-inline span
+        const pctItems = sharedPcts.map((p, i) => {
+            const ghostPctInline = p === null ? `<span class="hist-pct-inline hist-ghost" aria-hidden="true">00%</span>` : '';
+            return `<div class="hist-pct-header-col"><div class="hist-state-row hist-ghost" aria-hidden="true"><div class="hist-overlay-wrap"><div class="hist-swatch hist-swatch--state"></div><div class="hist-swatch hist-swatch--result"></div></div><div class="hist-tag-col"><span class="hist-delta">0.0</span>${ghostPctInline}</div></div><span class="hist-pct-header"><span class="tag ${tagClsList[i] || 'tag--t5'}">${i + 1}</span>${p != null ? p + '%' : ''}</span></div>`;
+        }).join('');
         pctHeaderRowHTML = `<div class="hist-pct-header-row">${ghostLeft}${pctItems}</div>`;
     }
 
