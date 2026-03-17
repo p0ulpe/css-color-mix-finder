@@ -3,11 +3,74 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CSS color-mix() generator - Blend color finder</title>
+
+    <!-- ── Primary SEO ─────────────────────────────────────── -->
+    <title>CSS color-mix() Generator — Blend Color Finder</title>
     <meta
       name="description"
       content="Given a base color and one or more target colors (hover, active…), this tool reverse-engineers the blend color and percentages for CSS color-mix() so the results visually match your targets. Supports oklab, lab, srgb, multiple color sets, and exports ready-to-use CSS variables."
     />
+    <meta
+      name="keywords"
+      content="CSS color-mix, color mix generator, blend color finder, design tokens, oklab, lab, srgb, hover active colors, CSS variables, Delta E, color mixing tool"
+    />
+    <meta name="author" content="p0ulpe" />
+    <link rel="canonical" href="https://p0ulpe.github.io/css-color-mix-finder/" />
+
+    <!-- ── Open Graph (Facebook, LinkedIn, Discord…) ───────── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="CSS color-mix() Generator — Blend Color Finder" />
+    <meta
+      property="og:description"
+      content="Reverse-engineer the perfect blend color and percentages for CSS color-mix(). Supports multiple color sets, oklab/lab/srgb, fix %, and exports ready-to-use CSS."
+    />
+    <meta property="og:url" content="https://p0ulpe.github.io/css-color-mix-finder/" />
+    <meta property="og:image" content="https://raw.githubusercontent.com/p0ulpe/css-color-mix-finder/main/docs/screenshots/results-color-mix.png" />
+    <meta property="og:image:alt" content="Blend Color Finder — result view showing color-mix() CSS output" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content="Blend Color Finder" />
+
+    <!-- ── Twitter Card ────────────────────────────────────── -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CSS color-mix() Generator — Blend Color Finder" />
+    <meta
+      name="twitter:description"
+      content="Reverse-engineer the perfect blend color and percentages for CSS color-mix(). Supports multiple color sets, oklab/lab/srgb, and exports ready-to-use CSS."
+    />
+    <meta name="twitter:image" content="https://raw.githubusercontent.com/p0ulpe/css-color-mix-finder/main/docs/screenshots/results-color-mix.png" />
+    <meta name="twitter:image:alt" content="Blend Color Finder — result view showing color-mix() CSS output" />
+
+    <!-- ── Misc ────────────────────────────────────────────── -->
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#0f1117" />
+
+    <!-- ── JSON-LD Structured Data ─────────────────────────── -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Blend Color Finder",
+        "alternateName": "CSS color-mix() Generator",
+        "url": "https://p0ulpe.github.io/css-color-mix-finder/",
+        "description": "Given a base color and one or more target colors, this tool reverse-engineers the blend color and percentages for CSS color-mix() so the results visually match your targets.",
+        "applicationCategory": "DesignApplication",
+        "operatingSystem": "Any",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "browserRequirements": "Requires a modern browser with CSS color-mix() and Web Worker support",
+        "screenshot": "https://raw.githubusercontent.com/p0ulpe/css-color-mix-finder/main/docs/screenshots/results-color-mix.png",
+        "sourceOrganization": {
+          "@type": "Person",
+          "name": "p0ulpe",
+          "url": "https://github.com/p0ulpe"
+        },
+        "license": "https://opensource.org/licenses/MIT"
+      }
+    </script>
+
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
