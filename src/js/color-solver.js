@@ -67,28 +67,51 @@ function solveBlendColor(baseHex, targetHex, space) {
     return best;
 }
 
-function generateBlendCandidates(hexA, hexB) {
+function generateBlendCandidates(hexA, hexB, fastMode) {
     const candidates = new Set();
     const rgbA = hexToRgb(hexA), rgbB = hexToRgb(hexB);
-    for (let t = 0; t <= 1; t += 0.05) {
-        candidates.add(rgbToHex({
-            r: Math.round(rgbA.r*(1-t)+rgbB.r*t),
-            g: Math.round(rgbA.g*(1-t)+rgbB.g*t),
-            b: Math.round(rgbA.b*(1-t)+rgbB.b*t),
-        }));
-    }
-    candidates.add(hexA);
-    candidates.add(hexB);
-    for (const hex of [...candidates]) {
-        const rgb = hexToRgb(hex);
-        for (let dr = -15; dr <= 15; dr += 5)
-            for (let dg = -15; dg <= 15; dg += 5)
-                for (let db = -15; db <= 15; db += 5)
-                    candidates.add(rgbToHex({
-                        r: Math.max(0,Math.min(255,rgb.r+dr)),
-                        g: Math.max(0,Math.min(255,rgb.g+dg)),
-                        b: Math.max(0,Math.min(255,rgb.b+db)),
-                    }));
+    if (fastMode) {
+        // Lean: 11-step lerp + small neighbourhood around each endpoint only
+        // ~250 candidates per pair vs ~7000 for full search
+        for (let t = 0; t <= 10; t++) {
+            candidates.add(rgbToHex({
+                r: Math.round(rgbA.r*(1-t/10)+rgbB.r*(t/10)),
+                g: Math.round(rgbA.g*(1-t/10)+rgbB.g*(t/10)),
+                b: Math.round(rgbA.b*(1-t/10)+rgbB.b*(t/10)),
+            }));
+        }
+        for (const hex of [hexA, hexB]) {
+            const rgb = hexToRgb(hex);
+            for (let dr = -10; dr <= 10; dr += 5)
+                for (let dg = -10; dg <= 10; dg += 5)
+                    for (let db = -10; db <= 10; db += 5)
+                        candidates.add(rgbToHex({
+                            r: Math.max(0,Math.min(255,rgb.r+dr)),
+                            g: Math.max(0,Math.min(255,rgb.g+dg)),
+                            b: Math.max(0,Math.min(255,rgb.b+db)),
+                        }));
+        }
+    } else {
+        for (let t = 0; t <= 1; t += 0.05) {
+            candidates.add(rgbToHex({
+                r: Math.round(rgbA.r*(1-t)+rgbB.r*t),
+                g: Math.round(rgbA.g*(1-t)+rgbB.g*t),
+                b: Math.round(rgbA.b*(1-t)+rgbB.b*t),
+            }));
+        }
+        candidates.add(hexA);
+        candidates.add(hexB);
+        for (const hex of [...candidates]) {
+            const rgb = hexToRgb(hex);
+            for (let dr = -15; dr <= 15; dr += 5)
+                for (let dg = -15; dg <= 15; dg += 5)
+                    for (let db = -15; db <= 15; db += 5)
+                        candidates.add(rgbToHex({
+                            r: Math.max(0,Math.min(255,rgb.r+dr)),
+                            g: Math.max(0,Math.min(255,rgb.g+dg)),
+                            b: Math.max(0,Math.min(255,rgb.b+db)),
+                        }));
+        }
     }
     return [...candidates];
 }
@@ -124,13 +147,13 @@ function solveSharedBlendColor(baseHex, hoverTargetHex, activeTargetHex, space) 
     return best;
 }
 
-function findBestColorSpace(baseHex, targets, fixedPcts, forcedSpace) {
+function findBestColorSpace(baseHex, targets, fixedPcts, forcedSpace, fastMode) {
     fixedPcts = fixedPcts || [];
-    const spaces = forcedSpace ? [forcedSpace] : ['oklab', 'lab', 'srgb'];
+    const spaces = forcedSpace ? [forcedSpace] : (fastMode ? ['oklab'] : ['oklab', 'lab', 'srgb']);
     let best = null, bestScore = Infinity;
     for (const space of spaces) {
         try {
-            const result = solveWithConstraints(baseHex, targets, space, fixedPcts);
+            const result = solveWithConstraints(baseHex, targets, space, fixedPcts, fastMode);
             if (result && result.totalDeltaE < bestScore) {
                 bestScore = result.totalDeltaE;
                 best = { space, result };
@@ -145,7 +168,7 @@ function findBestColorSpace(baseHex, targets, fixedPcts, forcedSpace) {
 // fixedPcts: array where fixedPcts[i] locks target-i's %  (null = auto)
 // Returns { blendHex, percents: [...], totalDeltaE,
 //           sets: [{ stateResults: [{ targetHex, computed, deltaE, percent }] }] }
-function solveMultiSet(sets, space, fixedPcts, deadline) {
+function solveMultiSet(sets, space, fixedPcts, deadline, fastMode) {
     space = space || 'oklab';
     fixedPcts = fixedPcts || [];
     const numTargets = Math.max(...sets.map(s => s.targets.length));
@@ -174,18 +197,18 @@ function solveMultiSet(sets, space, fixedPcts, deadline) {
 
     for (let i = 0; i < seeds.length; i++) {
         for (let j = i + 1; j < seeds.length; j++) {
-            for (const c of generateBlendCandidates(seeds[i], seeds[j])) {
+            for (const c of generateBlendCandidates(seeds[i], seeds[j], fastMode)) {
                 allCandidates.add(c);
             }
         }
     }
     for (const hex of seeds) {
-        for (const c of generateBlendCandidates(hex, centroid)) {
+        for (const c of generateBlendCandidates(hex, centroid, fastMode)) {
             allCandidates.add(c);
         }
     }
     if (seeds.length === 1) {
-        for (const c of generateBlendCandidates(seeds[0], seeds[0])) {
+        for (const c of generateBlendCandidates(seeds[0], seeds[0], fastMode)) {
             allCandidates.add(c);
         }
     }
@@ -274,12 +297,12 @@ function solveMultiSet(sets, space, fixedPcts, deadline) {
         coarseScores.push({ hex: candidateHex, score: maxWorst });
     }
     coarseScores.sort((a, b) => a.score - b.score);
-    const finalists = coarseScores.slice(0, 80);
+    const finalists = coarseScores.slice(0, fastMode ? 20 : 80);
 
     // ── Phase 2: fine scan on top candidates ──
     let best = null, bestScore = Infinity;
     for (const { hex: candidateHex } of finalists) {
-        if (deadline && Date.now() > deadline && best) break;
+        if ((deadline && Date.now() > deadline && best) || (fastMode && bestScore < 1.0)) break;
         const ev = evaluateCandidate(candidateHex);
         if (ev.worstDE < bestScore) {
             bestScore = ev.worstDE;
@@ -289,60 +312,63 @@ function solveMultiSet(sets, space, fixedPcts, deadline) {
 
     // ── Phase 3: iterative hill-climbing refinement ──
     if (best) {
-        const radii = [10, 6, 3];
-        for (const radius of radii) {
-            if (bestScore < 0.5 || (deadline && Date.now() > deadline)) break;
-            const rgb = hexToRgb(best.blendHex);
-            const step = radius > 6 ? 2 : 1;
-            const refinedCandidates = new Set();
-            for (let dr = -radius; dr <= radius; dr += step)
-                for (let dg = -radius; dg <= radius; dg += step)
-                    for (let db = -radius; db <= radius; db += step)
-                        refinedCandidates.add(rgbToHex({
-                            r: Math.max(0, Math.min(255, rgb.r + dr)),
-                            g: Math.max(0, Math.min(255, rgb.g + dg)),
-                            b: Math.max(0, Math.min(255, rgb.b + db)),
-                        }));
-            for (const candidateHex of refinedCandidates) {
-                const ev = evaluateCandidate(candidateHex);
-                if (ev.worstDE < bestScore) {
-                    bestScore = ev.worstDE;
-                    best = { blendHex: candidateHex, percents: ev.percents, totalDeltaE: ev.totalDeltaE, sets: ev.setResults };
-                    if (bestScore < 0.5) break;
+        if (!fastMode) {
+            const radii = [10, 6, 3];
+            for (const radius of radii) {
+                if (bestScore < 0.5 || (deadline && Date.now() > deadline)) break;
+                const rgb = hexToRgb(best.blendHex);
+                const step = radius > 6 ? 2 : 1;
+                const refinedCandidates = new Set();
+                for (let dr = -radius; dr <= radius; dr += step)
+                    for (let dg = -radius; dg <= radius; dg += step)
+                        for (let db = -radius; db <= radius; db += step)
+                            refinedCandidates.add(rgbToHex({
+                                r: Math.max(0, Math.min(255, rgb.r + dr)),
+                                g: Math.max(0, Math.min(255, rgb.g + dg)),
+                                b: Math.max(0, Math.min(255, rgb.b + db)),
+                            }));
+                for (const candidateHex of refinedCandidates) {
+                    const ev = evaluateCandidate(candidateHex);
+                    if (ev.worstDE < bestScore) {
+                        bestScore = ev.worstDE;
+                        best = { blendHex: candidateHex, percents: ev.percents, totalDeltaE: ev.totalDeltaE, sets: ev.setResults };
+                        if (bestScore < 0.5) break;
+                    }
+                }
+            }
+
+            const topHexes = finalists.slice(0, 5).map(f => f.hex);
+            for (const hex of topHexes) {
+                if (bestScore < 0.5 || (deadline && Date.now() > deadline)) break;
+                if (hex === best.blendHex) continue;
+                const rgb = hexToRgb(hex);
+                const refinedCandidates = new Set();
+                for (let dr = -6; dr <= 6; dr += 1)
+                    for (let dg = -6; dg <= 6; dg += 1)
+                        for (let db = -6; db <= 6; db += 1)
+                            refinedCandidates.add(rgbToHex({
+                                r: Math.max(0, Math.min(255, rgb.r + dr)),
+                                g: Math.max(0, Math.min(255, rgb.g + dg)),
+                                b: Math.max(0, Math.min(255, rgb.b + db)),
+                            }));
+                for (const candidateHex of refinedCandidates) {
+                    const ev = evaluateCandidate(candidateHex);
+                    if (ev.worstDE < bestScore) {
+                        bestScore = ev.worstDE;
+                        best = { blendHex: candidateHex, percents: ev.percents, totalDeltaE: ev.totalDeltaE, sets: ev.setResults };
+                        if (bestScore < 0.5) break;
+                    }
                 }
             }
         }
 
-        const topHexes = finalists.slice(0, 5).map(f => f.hex);
-        for (const hex of topHexes) {
-            if (bestScore < 0.5 || (deadline && Date.now() > deadline)) break;
-            if (hex === best.blendHex) continue;
-            const rgb = hexToRgb(hex);
-            const refinedCandidates = new Set();
-            for (let dr = -6; dr <= 6; dr += 1)
-                for (let dg = -6; dg <= 6; dg += 1)
-                    for (let db = -6; db <= 6; db += 1)
-                        refinedCandidates.add(rgbToHex({
-                            r: Math.max(0, Math.min(255, rgb.r + dr)),
-                            g: Math.max(0, Math.min(255, rgb.g + dg)),
-                            b: Math.max(0, Math.min(255, rgb.b + db)),
-                        }));
-            for (const candidateHex of refinedCandidates) {
-                const ev = evaluateCandidate(candidateHex);
-                if (ev.worstDE < bestScore) {
-                    bestScore = ev.worstDE;
-                    best = { blendHex: candidateHex, percents: ev.percents, totalDeltaE: ev.totalDeltaE, sets: ev.setResults };
-                    if (bestScore < 0.5) break;
-                }
-            }
-        }
-
-        // Final tight pass around the winner
-        {
+        // Final tight pass around the winner (all modes)
+        if (!(deadline && Date.now() > deadline)) {
             const rgb = hexToRgb(best.blendHex);
-            for (let dr = -3; dr <= 3; dr++)
-                for (let dg = -3; dg <= 3; dg++)
-                    for (let db = -3; db <= 3; db++) {
+            const finalR = fastMode ? 2 : 3;
+            for (let dr = -finalR; dr <= finalR; dr++)
+                for (let dg = -finalR; dg <= finalR; dg++)
+                    for (let db = -finalR; db <= finalR; db++) {
                         const candidateHex = rgbToHex({
                             r: Math.max(0, Math.min(255, rgb.r + dr)),
                             g: Math.max(0, Math.min(255, rgb.g + dg)),
@@ -366,13 +392,13 @@ function solveMultiSet(sets, space, fixedPcts, deadline) {
     return best;
 }
 
-function findBestColorSpaceMultiSet(sets, forcedSpace, fixedPcts, deadline) {
-    const spaces = forcedSpace ? [forcedSpace] : ['oklab', 'lab', 'srgb'];
+function findBestColorSpaceMultiSet(sets, forcedSpace, fixedPcts, deadline, fastMode) {
+    const spaces = forcedSpace ? [forcedSpace] : (fastMode ? ['oklab'] : ['oklab', 'lab', 'srgb']);
     let best = null, bestWorst = Infinity;
     for (const space of spaces) {
         if (deadline && Date.now() > deadline && best) break;
         try {
-            const result = solveMultiSet(sets, space, fixedPcts, deadline);
+            const result = solveMultiSet(sets, space, fixedPcts, deadline, fastMode);
             if (!result) continue;
             const worstDE = Math.max(...result.sets.map(s => Math.max(...s.stateResults.map(r => r.deltaE))));
             if (worstDE < bestWorst) {
@@ -416,7 +442,7 @@ function solveBlendColorAtPct(baseHex, targetHex, pct, space) {
 }
 
 // Solve with optional fixed percentages for N targets
-function solveWithConstraints(baseHex, targets, space, fixedPcts) {
+function solveWithConstraints(baseHex, targets, space, fixedPcts, fastMode) {
     space = space || 'oklab';
     fixedPcts = fixedPcts || [];
 
@@ -434,11 +460,11 @@ function solveWithConstraints(baseHex, targets, space, fixedPcts) {
     // Build candidates from seed pairs
     const cs = new Set();
     if (seedHexes.length === 1) {
-        for (const c of generateBlendCandidates(seedHexes[0], seedHexes[0])) cs.add(c);
+        for (const c of generateBlendCandidates(seedHexes[0], seedHexes[0], fastMode)) cs.add(c);
     } else {
         for (let i = 0; i < seedHexes.length; i++) {
             for (let j = i + 1; j < seedHexes.length; j++) {
-                for (const c of generateBlendCandidates(seedHexes[i], seedHexes[j])) cs.add(c);
+                for (const c of generateBlendCandidates(seedHexes[i], seedHexes[j], fastMode)) cs.add(c);
             }
         }
         const rgbs = seedHexes.map(h => hexToRgb(h));
@@ -489,7 +515,7 @@ function solveWithConstraints(baseHex, targets, space, fixedPcts) {
 // ── Per-set blend colors with shared % per target index ──────────────────────
 // Finds optimal shared percentages (one per target index), then for each set
 // independently finds the best blend color at those fixed pcts.
-function solvePerSetBlendSharedPct(sets, space, fixedPcts) {
+function solvePerSetBlendSharedPct(sets, space, fixedPcts, fastMode) {
     space = space || 'oklab';
     fixedPcts = fixedPcts || [];
     const numTargets = Math.max(...sets.map(s => s.targets.length));
@@ -587,7 +613,7 @@ function solvePerSetBlendSharedPct(sets, space, fixedPcts) {
     }
 
     // Coordinate descent: optimize each pct while fixing others
-    for (let round = 0; round < 3; round++) {
+    for (let round = 0; round < (fastMode ? 1 : 3); round++) {
         for (let ti = 0; ti < numTargets; ti++) {
             if (fixedPcts[ti] != null) continue;
             let bestPct = currentPcts[ti], bestScore = Infinity;
@@ -617,13 +643,13 @@ function solvePerSetBlendSharedPct(sets, space, fixedPcts) {
     };
 }
 
-function findBestColorSpacePerSetBlend(sets, forcedSpace, fixedPcts, deadline) {
-    const spaces = forcedSpace ? [forcedSpace] : ['oklab', 'lab', 'srgb'];
+function findBestColorSpacePerSetBlend(sets, forcedSpace, fixedPcts, deadline, fastMode) {
+    const spaces = forcedSpace ? [forcedSpace] : (fastMode ? ['oklab'] : ['oklab', 'lab', 'srgb']);
     let best = null, bestScore = Infinity;
     for (const space of spaces) {
         if (deadline && Date.now() > deadline && best) break;
         try {
-            const result = solvePerSetBlendSharedPct(sets, space, fixedPcts);
+            const result = solvePerSetBlendSharedPct(sets, space, fixedPcts, fastMode);
             if (!result) continue;
             const worstDE = Math.max(...result.sets.map(s => Math.max(...s.stateResults.map(r => r.deltaE))));
             if (worstDE < bestScore) { bestScore = worstDE; best = { space, result }; }
@@ -633,11 +659,11 @@ function findBestColorSpacePerSetBlend(sets, forcedSpace, fixedPcts, deadline) {
 }
 
 // ── Fully independent: each set gets its own blend color + percentages ────────
-function solveIndependent(sets, forcedSpace, fixedPcts, deadline) {
+function solveIndependent(sets, forcedSpace, fixedPcts, deadline, fastMode) {
     const setResults = [];
     for (const s of sets) {
         if (deadline && Date.now() > deadline && setResults.length > 0) break;
-        const sol = findBestColorSpace(s.baseHex, s.targets, fixedPcts, forcedSpace);
+        const sol = findBestColorSpace(s.baseHex, s.targets, fixedPcts, forcedSpace, fastMode);
         if (!sol) return null;
         const r = sol.result;
         setResults.push({
