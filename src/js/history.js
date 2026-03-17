@@ -73,21 +73,27 @@ function createHistoryItemHTML(e) {
     const hPct = e.hoverPercent || (setsArr[0] && setsArr[0].hoverPercent) || '?';
     const aPct = e.activePercent || (setsArr[0] && setsArr[0].activePercent) || '?';
 
+    const firstSet = setsArr[0] || {};
+    const targetCount = firstSet.stateResults
+        ? firstSet.stateResults.length
+        : [firstSet.hoverTargetHex, firstSet.activeTargetHex].filter(Boolean).length;
+
     // Top-row blend column
     const blendColHTML = mode === 'shared'
         ? `<div class="hist-blend-col">
-      <div class="hist-swatch hist-swatch--blend" style="background:${e.blendHex}" data-tooltip="${e.blendHex ? e.blendHex.toUpperCase() : ''}"></div>
+      <div class="hist-swatch hist-swatch--blend" style="background:${e.blendHex}" data-color="${e.blendHex ? e.blendHex.toUpperCase() : ''}" data-tooltip="${e.blendHex ? e.blendHex.toUpperCase() : ''}"></div>
       <span class="hist-swatch-lbl">${e.blendHex ? e.blendHex.toUpperCase() : ''}</span>
     </div>`
         : `<div class="hist-blend-col">
-      <div class="hist-multi-blends">${setsArr.map(s => `<div class="hist-swatch hist-swatch--blend" style="background:${s.blendHex || ''}" data-tooltip="${s.blendHex ? s.blendHex.toUpperCase() : ''}"></div>`).join('')}</div>
+      <div class="hist-multi-blends">${setsArr.map(s => `<div class="hist-swatch hist-swatch--blend" style="background:${s.blendHex || ''}" data-color="${s.blendHex ? s.blendHex.toUpperCase() : ''}" data-tooltip="${s.blendHex ? s.blendHex.toUpperCase() : ''}"></div>`).join('')}</div>
       <span class="hist-swatch-lbl hist-swatch-lbl--muted">per-set</span>
     </div>`;
 
     const pctHTML = mode === 'independent'
-        ? `<span class="hist-pct" style="opacity:0.4"><span class="tag tag--hover">1</span>—</span>
-    <span class="hist-pct" style="opacity:0.4"><span class="tag tag--active">2</span>—</span>`
-        : `<span class="hist-pct"><span class="tag tag--hover">1</span>${hPct}%</span>
+        ? ''
+        : targetCount === 1
+            ? `<span class="hist-pct"><span class="tag tag--hover">1</span>${hPct}%</span>`
+            : `<span class="hist-pct"><span class="tag tag--hover">1</span>${hPct}%</span>
     <span class="hist-pct"><span class="tag tag--active">2</span>${aPct}%</span>`;
 
     const spaceHTML = mode === 'independent'
@@ -96,10 +102,15 @@ function createHistoryItemHTML(e) {
 
     const setLines = setsArr.map(s => {
         const setBlendSwatch = (mode === 'per-set-blend' || mode === 'independent') && s.blendHex
-            ? `<div class="hist-swatch hist-swatch--blend" style="background:${s.blendHex}" data-tooltip="Blend ${s.blendHex.toUpperCase()}"></div>`
+            ? `<div class="hist-swatch hist-swatch--blend" style="background:${s.blendHex}" data-color="${s.blendHex.toUpperCase()}" data-tooltip="Blend ${s.blendHex.toUpperCase()}"></div>`
             : '';
+        const setTargetCount = s.stateResults
+            ? s.stateResults.length
+            : [s.hoverTargetHex, s.activeTargetHex].filter(Boolean).length;
         const setPercentBadges = mode === 'independent'
-            ? `<span class="hist-set-pct-badge"><span class="tag tag--hover">1</span>${s.hoverPercent || '?'}%</span><span class="hist-set-pct-badge"><span class="tag tag--active">2</span>${s.activePercent || '?'}%</span>`
+            ? setTargetCount === 1
+                ? `<span class="hist-set-pct-badge"><span class="tag tag--hover">1</span>${s.hoverPercent || '?'}%</span>`
+                : `<span class="hist-set-pct-badge"><span class="tag tag--hover">1</span>${s.hoverPercent || '?'}%</span><span class="hist-set-pct-badge"><span class="tag tag--active">2</span>${s.activePercent || '?'}%</span>`
             : '';
 
         // Build target state rows from stateResults (new) or legacy fallback
@@ -116,7 +127,7 @@ function createHistoryItemHTML(e) {
             <div class="hist-state-col">
                 <div class="hist-state-row">
                     <div class="hist-overlay-wrap">
-                        <div class="hist-swatch hist-swatch--state" style="background:${sr.targetHex}" data-tooltip="Target ${n} ${sr.targetHex ? sr.targetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${sr.computed}" data-tooltip="Result ${sr.computed ? sr.computed.toUpperCase() : ''}"></div>
+                        <div class="hist-swatch hist-swatch--state" style="background:${sr.targetHex}" data-color="${sr.targetHex ? sr.targetHex.toUpperCase() : ''}" data-tooltip="Target ${n} ${sr.targetHex ? sr.targetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${sr.computed}" data-color="${sr.computed ? sr.computed.toUpperCase() : ''}" data-tooltip="Result ${sr.computed ? sr.computed.toUpperCase() : ''}"></div>
                     </div>
                     <div class="hist-tag-col">
                         <span class="tag ${tc}">${n}</span>
@@ -131,7 +142,8 @@ function createHistoryItemHTML(e) {
             ${setBlendSwatch}
             <span class="hist-set-name">${s.name}</span>
             ${setPercentBadges}
-            <div class="hist-swatch" style="background:${s.baseHex}" data-tooltip="Base ${s.baseHex ? s.baseHex.toUpperCase() : ''}"></div>
+            <div class="hist-swatch" style="background:${s.baseHex}" data-color="${s.baseHex ? s.baseHex.toUpperCase() : ''}" data-tooltip="Base ${s.baseHex ? s.baseHex.toUpperCase() : ''}"></div>
+            <div class="hist-set-break"></div>
             ${stateHTML}
         </div>`;
     }).join('');
@@ -142,6 +154,10 @@ function createHistoryItemHTML(e) {
     ${blendColHTML}
     ${pctHTML}
     ${spaceHTML}
+    <button class="hist-reuse" data-id="${e.id}" aria-label="Reuse these settings">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      Reuse
+    </button>
     <button class="hist-pin${e.pinned ? ' pinned' : ''}" data-id="${e.id}" aria-label="${e.pinned ? 'Unpin' : 'Pin'} entry">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${e.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V5a1 1 0 0 1 1-1l.3-.15a2 2 0 0 0 .7-2.85h-10a2 2 0 0 0 .7 2.85L8 4a1 1 0 0 1 1 1z"/></svg>
     </button>
@@ -195,14 +211,32 @@ function initHistory() {
             return;
         }
 
-        const item = e.target.closest('.hist-item');
-        if (!item) return;
+        const reuseBtn = e.target.closest('.hist-reuse');
+        if (reuseBtn) {
+            e.stopPropagation();
+            const id = Number(reuseBtn.dataset.id);
+            const entry = loadHistory().find(en => en.id === id);
+            if (entry) restoreFromHistory(entry);
+            return;
+        }
 
-        const id = Number(item.dataset.id);
-        const entry = loadHistory().find(e => e.id === id);
-        if (!entry) return;
-
-        restoreFromHistory(entry);
+        const swatch = e.target.closest('.hist-swatch');
+        if (swatch) {
+            e.stopPropagation();
+            const color = swatch.dataset.color;
+            if (color && navigator.clipboard) {
+                navigator.clipboard.writeText(color).then(() => {
+                    const original = swatch.dataset.tooltip;
+                    swatch.dataset.tooltip = 'Copied!';
+                    swatch.classList.add('hist-swatch--copied');
+                    setTimeout(() => {
+                        swatch.dataset.tooltip = original;
+                        swatch.classList.remove('hist-swatch--copied');
+                    }, 1500);
+                });
+            }
+            return;
+        }
     });
 }
 
