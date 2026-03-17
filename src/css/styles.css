@@ -342,7 +342,8 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 .input-section.hist-restored { animation: hist-restore-flash 0.7s ease; }
 
 @media (max-width: 540px) {
-  .hist-top-row { gap: 0.5rem; }
+  .hist-reuse { margin-left: auto; }
+  .hist-top-row { position: static; gap: 0.5rem; margin-bottom: 0.4rem; }
   .hist-reuse { order: 10; margin-left: auto; }
   .hist-pin { order: 11; }
   .hist-delete { order: 12; }
