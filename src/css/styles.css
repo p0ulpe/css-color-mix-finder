@@ -313,14 +313,16 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 .hist-body--tree { display: flex; flex-direction: column; }
 .hist-tree-inner { display: flex; align-items: stretch; }
 .hist-tree-root { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; min-width: 58px; position: relative; }
-.hist-tree-root .hist-space-badge { margin-bottom: 4px; }
 .hist-tree-root::after { content: ''; position: absolute; left: calc(50% + 16px); right: 0; top: 50%; border-top: 1px solid var(--border); }
+/* Only swatch is in flex flow → swatch centers exactly at 50%; label sits below as absolute */
+.hist-tree-root .hist-swatch-lbl { position: absolute; top: calc(50% + 20px); left: 50%; transform: translateX(-50%); }
 .hist-sets--tree { flex: 1; }
 .hist-sets--tree .hist-set-line { position: relative; padding-left: 18px; }
-/* Header row sits above hist-tree-inner; offset = tree-root width (58px) + trunk padding (18px) */
-.hist-body--tree > .hist-pct-header-row { padding-left: calc(58px + 18px); }
-/* Vertical trunk */
-.hist-sets--tree .hist-set-line::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; border-left: 1px solid var(--border); }
+/* Header row: badge-cell (58px) takes the tree-root slot, padding covers the trunk indent */
+.hist-body--tree > .hist-pct-header-row { padding-left: 18px; }
+.hist-pct-badge-cell { min-width: 58px; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+/* Vertical trunk — extend by half-gap (0.15rem) on each side to bridge the row gaps */
+.hist-sets--tree .hist-set-line::before { content: ''; position: absolute; left: 0; top: -0.15rem; bottom: -0.15rem; border-left: 1px solid var(--border); }
 /* Horizontal branch */
 .hist-sets--tree .hist-set-line::after { content: ''; position: absolute; left: 0; top: 50%; width: 14px; border-top: 1px solid var(--border); }
 /* First: trunk starts from center */
@@ -353,6 +355,7 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
   .hist-tree-inner { flex-direction: column; gap: 0.4rem; }
   .hist-tree-root { flex-direction: row; gap: 0.5rem; min-width: unset; }
   .hist-tree-root::after { display: none; }
+  .hist-tree-root .hist-swatch-lbl { position: static; transform: none; }
   .hist-body--tree > .hist-pct-header-row { padding-left: 0; }
   .hist-sets--tree .hist-set-line { padding-left: 0; }
   .hist-sets--tree .hist-set-line::before,

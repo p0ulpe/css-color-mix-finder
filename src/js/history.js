@@ -162,7 +162,11 @@ function createHistoryItemHTML(e) {
         const pctItems = sharedPcts.map((p, i) =>
             `<div class="hist-pct-header-col"><div class="hist-state-row hist-ghost" aria-hidden="true"><div class="hist-overlay-wrap"><div class="hist-swatch hist-swatch--state"></div><div class="hist-swatch hist-swatch--result"></div></div><div class="hist-tag-col"><span class="tag ${tagClsList[i] || 'tag--t5'}">0</span><span class="hist-delta">0.0</span></div></div><span class="hist-pct-header"><span class="tag ${tagClsList[i] || 'tag--t5'}">${i + 1}</span>${p}%</span></div>`
         ).join('');
-        pctHeaderRowHTML = `<div class="hist-pct-header-row">${ghostLeft}${pctItems}</div>`;
+        // For tree mode, place color-space badge at start of header row (left column slot)
+        const badgePrefix = mode === 'shared'
+            ? `<div class="hist-pct-badge-cell"><div class="hist-space-badge">${e.colorSpace || '\u2014'}</div></div>`
+            : '';
+        pctHeaderRowHTML = `<div class="hist-pct-header-row">${badgePrefix}${ghostLeft}${pctItems}</div>`;
     }
 
     // Body: tree layout for shared mode, flat for per-set modes
@@ -174,7 +178,7 @@ function createHistoryItemHTML(e) {
     ${pctHeaderRowHTML}
     <div class="hist-tree-inner">
       <div class="hist-tree-root">
-        <div class="hist-space-badge">${e.colorSpace || '—'}</div>
+
         <div class="hist-swatch hist-swatch--blend" style="background:${e.blendHex}" data-color="${e.blendHex ? e.blendHex.toUpperCase() : ''}" data-tooltip="${e.blendHex ? e.blendHex.toUpperCase() : ''}"></div>
         <span class="hist-swatch-lbl">${e.blendHex ? e.blendHex.toUpperCase() : ''}</span>
       </div>
