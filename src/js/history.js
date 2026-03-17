@@ -93,7 +93,7 @@ function createHistoryItemHTML(e) {
             ? `<div class="hist-swatch hist-swatch--blend" style="background:${s.blendHex}" data-color="${s.blendHex.toUpperCase()}" data-tooltip="Blend ${s.blendHex.toUpperCase()}"></div><span class="hist-set-arrow">→</span>`
             : '';
         const setSpaceBadge = mode === 'independent'
-            ? `<div class="hist-space-badge hist-space-badge--inline">${s.colorSpace || e.colorSpace || 'srgb'}</div>`
+            ? `<div class="hist-space-badge-wrap"><div class="hist-space-badge hist-space-badge--inline">${s.colorSpace || e.colorSpace || 'srgb'}</div></div>`
             : '';
         const setTargetCount = s.stateResults
             ? s.stateResults.length
