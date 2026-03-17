@@ -343,6 +343,7 @@ label {
 .mode-ctrl-group {
   gap: 0.4rem;
   align-self: center;
+  flex-wrap: wrap;
 }
 .mode-check-label {
   display: flex;
@@ -1622,6 +1623,9 @@ button:focus-visible {
   .hist-swatch--result {
     width: 28px;
     height: 28px;
+  }
+  .hist-pct-header {
+    width: 56px; /* 2 × 28px swatches */
   }
   .hist-body--tree {
     gap: 0.4rem;
