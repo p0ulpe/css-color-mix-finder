@@ -152,21 +152,21 @@ function createHistoryItemHTML(e) {
     if (sharedPcts) {
         // Ghost left columns mirror the set-line left side
         // For tree mode, padding-left on the header row handles tree-root+trunk offset via CSS
-        let ghostLeft = `<span class="hist-set-name hist-ghost" aria-hidden="true"></span>
-                         <div class="hist-swatch hist-ghost" aria-hidden="true"></div>`;
+        // ghostLeft mirrors the left-side items of a set-line (before the state cols)
+        // For per-set-blend: [blend swatch][→][set-name][base-swatch]
+        //   → badge replaces the ghost blend swatch (same 32px slot) to stay visible
+        // For other modes: [set-name][base-swatch]
+        let ghostLeft;
         if (mode === 'per-set-blend') {
-            ghostLeft = `<div class="hist-swatch hist-ghost" aria-hidden="true"></div>
-                         <span class="hist-set-arrow hist-ghost" aria-hidden="true">→</span>${ghostLeft}`;
+            ghostLeft = `<div class="hist-pct-badge-cell"><div class="hist-space-badge">${e.colorSpace || '\u2014'}</div></div><span class="hist-set-arrow hist-ghost" aria-hidden="true">\u2192</span><span class="hist-set-name hist-ghost" aria-hidden="true"></span><div class="hist-swatch hist-ghost" aria-hidden="true"></div>`;
+        } else {
+            ghostLeft = `<span class="hist-set-name hist-ghost" aria-hidden="true"></span><div class="hist-swatch hist-ghost" aria-hidden="true"></div>`;
         }
         // Each pct col uses a ghost state-row (height:0) to match state-col width exactly
         const pctItems = sharedPcts.map((p, i) =>
             `<div class="hist-pct-header-col"><div class="hist-state-row hist-ghost" aria-hidden="true"><div class="hist-overlay-wrap"><div class="hist-swatch hist-swatch--state"></div><div class="hist-swatch hist-swatch--result"></div></div><div class="hist-tag-col"><span class="tag ${tagClsList[i] || 'tag--t5'}">0</span><span class="hist-delta">0.0</span></div></div><span class="hist-pct-header"><span class="tag ${tagClsList[i] || 'tag--t5'}">${i + 1}</span>${p}%</span></div>`
         ).join('');
-        // For per-set-blend, place color-space badge at start of header row
-        const badgePrefix = mode === 'per-set-blend'
-            ? `<div class="hist-pct-badge-cell"><div class="hist-space-badge">${e.colorSpace || '\u2014'}</div></div>`
-            : '';
-        pctHeaderRowHTML = `<div class="hist-pct-header-row">${badgePrefix}${ghostLeft}${pctItems}</div>`;
+        pctHeaderRowHTML = `<div class="hist-pct-header-row">${ghostLeft}${pctItems}</div>`;
     }
 
     // Body: tree layout for shared mode, flat for per-set modes
