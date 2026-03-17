@@ -3,7 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Blend Color Finder</title>
+    <title>CSS color-mix() generator - Blend color finder</title>
+    <meta
+      name="description"
+      content="Given a base color and one or more target colors (hover, active…), this tool reverse-engineers the blend color and percentages for CSS color-mix() so the results visually match your targets. Supports oklab, lab, srgb, multiple color sets, and exports ready-to-use CSS variables."
+    />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
@@ -11,9 +15,13 @@
       <header>
         <div class="header-text">
           <h1>Blend Color Finder</h1>
+          <h2>CSS color-mix() Generator</h2>
           <p class="subtitle">
-            Find the perfect blend color and percentage for your CSS
-            <code>color-mix()</code> design tokens
+            Given a <strong> base color</strong> and one or more
+            <strong>target colors</strong> (e.g. hover / active states), this
+            tool reverse-engineers the blend color and percentages to use in CSS
+            <code>color-mix()</code> so the results visually match your targets
+            as closely as possible.
           </p>
         </div>
         <button
@@ -170,7 +178,13 @@
         </section>
 
         <!-- ── History ─────────────────────────────────────────────── -->
-        <section class="history-section card" id="historySection" role="region" aria-label="History" hidden>
+        <section
+          class="history-section card"
+          id="historySection"
+          role="region"
+          aria-label="History"
+          hidden
+        >
           <div class="history-header">
             <h2>History</h2>
             <span class="history-count" id="historyCount"></span>
@@ -198,6 +212,12 @@
           </button>
         </section>
       </main>
+      <footer class="site-footer">
+        <a href="https://github.com/p0ulpe/css-color-mix-finder" target="_blank" rel="noopener noreferrer">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.838 1.237 1.838 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.3 1.23A11.51 11.51 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.29-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.606-.015 2.896-.015 3.293 0 .322.216.694.825.576C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </footer>
     </div>
     <script src="js/color-math.js"></script>
     <script src="js/color-solver.js"></script>

@@ -1646,3 +1646,22 @@ button:focus-visible {
     display: none;
   }
 }
+
+/* ── Footer ──────────────────────────────────────────────── */
+.site-footer {
+  text-align: center;
+  padding: 1.5rem 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.site-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.site-footer a:hover {
+  color: var(--accent);
+}
