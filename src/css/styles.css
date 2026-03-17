@@ -1099,6 +1099,10 @@ button:focus-visible {
     background 0.15s;
   user-select: none;
 }
+.hist-scroll-body {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .hist-item:hover {
   background: #1e2030;
 }
