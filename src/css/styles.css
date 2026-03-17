@@ -1019,6 +1019,19 @@ label {
     display: none;
   }
 }
+/* Inside overflow-x:auto scroll containers, ::before/::after going upward get
+   clipped (overflow-x:auto forces overflow-y:auto too). Point tooltip downward
+   so it stays within the scroll container's padding box. */
+.hist-scroll-body [data-tooltip]::before {
+  top: calc(100% + 8px);
+  bottom: auto;
+}
+.hist-scroll-body [data-tooltip]::after {
+  top: calc(100% + 2px);
+  bottom: auto;
+  border-top-color: transparent;
+  border-bottom-color: #2a2d3e;
+}
 
 /* ── Keyboard focus rings ─────────────────────────────────────────────────── */
 /* Visible focus outline for keyboard navigation (not triggered by mouse)       */
