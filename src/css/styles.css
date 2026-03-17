@@ -243,11 +243,11 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 .btn-clear-history:hover { color: #f87171; border-color: #f87171; }
 
 /* History item */
-.hist-item { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.6rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); transition: border-color 0.15s, background 0.15s; user-select: none; }
+.hist-item { position: relative; display: flex; flex-direction: column; padding: 0.6rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); transition: border-color 0.15s, background 0.15s; user-select: none; }
 .hist-item:hover { background: #1e2030; }
 
 /* Top row with blend swatch + space + actions */
-.hist-top-row { display: flex; align-items: center; gap: 0.8rem; }
+.hist-top-row { position: absolute; top: 0.4rem; right: 0.6rem; display: flex; align-items: center; gap: 0.8rem; z-index: 1; }
 
 /* Swatches */
 .hist-swatch { width: 32px; height: 32px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; cursor: pointer; transition: outline 0.1s; }
@@ -282,7 +282,7 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 .hist-arrow-icon { color: var(--text-muted); opacity: 0.5; flex-shrink: 0; }
 
 /* Delete button */
-.hist-reuse { margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2em 0.65em; font-size: 0.65rem; font-weight: 500; color: var(--text-muted); background: transparent; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; white-space: nowrap; }
+.hist-reuse { flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2em 0.65em; font-size: 0.65rem; font-weight: 500; color: var(--text-muted); background: transparent; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; white-space: nowrap; }
 .hist-reuse:hover { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .hist-pin { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: transparent; border: 1px solid transparent; color: var(--text-muted); cursor: pointer; transition: color 0.15s, border-color 0.15s; padding: 0; line-height: 1; }
 .hist-pin:hover { color: var(--accent); border-color: var(--accent); }
@@ -342,7 +342,7 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 .input-section.hist-restored { animation: hist-restore-flash 0.7s ease; }
 
 @media (max-width: 540px) {
-  .hist-top-row { flex-wrap: wrap; row-gap: 0.4rem; gap: 0.5rem; }
+  .hist-top-row { gap: 0.5rem; }
   .hist-reuse { order: 10; margin-left: auto; }
   .hist-pin { order: 11; }
   .hist-delete { order: 12; }
