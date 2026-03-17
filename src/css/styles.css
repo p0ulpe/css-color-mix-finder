@@ -269,17 +269,17 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 
 /* State columns */
 .hist-state-col { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; flex-shrink: 0; }
-.hist-state-col .tag { font-size: 0.58rem; padding: 0.1em 0.4em; }
 .hist-state-row { display: flex; align-items: center; gap: 5px; }
 .hist-pct { display: inline-flex; align-items: center; gap: 0.3rem; font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); letter-spacing: 0.02em; white-space: nowrap; }
 .hist-tag-col { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
 .hist-tag-row { display: flex; align-items: center; gap: 0.35rem; }
-.hist-delta { font-family: var(--font-mono); font-size: 0.58rem; font-weight: 600; }
+.hist-delta { font-family: var(--font-mono); font-size: 0.62rem; font-weight: 600; min-width: 2.4em; text-align: left; }
 .hist-delta.good { color: #4ade80; }
 .hist-delta.ok   { color: #facc15; }
 .hist-delta.bad  { color: #f87171; }
 .hist-space-badge { font-family: var(--font-mono); font-size: 0.6rem; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 999px; padding: 0.15em 0.55em; flex-shrink: 0; white-space: nowrap; align-self: center; }
-.hist-overlay-wrap { display: flex; align-items: center; gap: 0; }
+.hist-overlay-wrap { position: relative; display: flex; align-items: center; gap: 0; }
+.hist-state-badge { position: absolute; top: -5px; right: -6px; z-index: 1; font-size: 0.48rem !important; padding: 0.12em 0.38em !important; line-height: 1.2; pointer-events: none; }
 .hist-arrow-icon { color: var(--text-muted); opacity: 0.5; flex-shrink: 0; }
 
 /* Delete button */
@@ -301,13 +301,15 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 
 /* ── Pct header row ───────────────────────────────────────────────────────── */
 /* Ghost elements mirror left-side of set-line for exact column alignment */
-.hist-pct-header-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1px; }
+.hist-pct-header-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: -4px; }
 .hist-ghost { visibility: hidden; pointer-events: none; flex-shrink: 0; }
 /* Each pct col contains a height-0 ghost state-row (for width matching) + the visible badge */
 .hist-pct-header-col { display: flex; flex-direction: column; align-items: flex-start; flex-shrink: 0; gap: 0; }
 .hist-pct-header-col .hist-ghost { height: 0; overflow: hidden; }
 /* Badge is 64px wide (= 2 × 32px overlay-wrap), centered over the two swatches */
-.hist-pct-header { width: 64px; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); letter-spacing: 0.02em; white-space: nowrap; }
+.hist-pct-header { width: 64px; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); letter-spacing: 0.02em; white-space: nowrap; }
+/* Per-set variable % shown in state column (independent mode) */
+.hist-pct-inline { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); letter-spacing: 0.02em; white-space: nowrap; min-width: 2.8em; text-align: left; }
 
 /* ── Tree layout (shared blend mode) ──────────────────────────────────────── */
 /* hist-body--tree stacks header row above tree-inner (column direction)       */
@@ -316,13 +318,11 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 .hist-tree-root { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; min-width: 58px; position: relative; }
 .hist-tree-root::after { content: ''; position: absolute; left: calc(50% + 16px); right: 0; top: 50%; border-top: 1px solid var(--border); }
 /* Badge and label are absolute so only the swatch stays in flex flow → swatch centers at 50% */
-.hist-tree-root .hist-space-badge { position: absolute; bottom: calc(50% + 20px); left: 50%; transform: translateX(-50%); white-space: nowrap; }
 .hist-tree-root .hist-swatch-lbl { position: absolute; top: calc(50% + 20px); left: 50%; transform: translateX(-50%); }
 .hist-sets--tree { flex: 1; }
 .hist-sets--tree .hist-set-line { position: relative; padding-left: 18px; }
 /* Header row: offset = tree-root width (58px) + trunk indent (18px) */
 .hist-body--tree > .hist-pct-header-row { padding-left: calc(58px + 18px); }
-.hist-pct-badge-cell { width: 32px; height: 32px; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
 /* Vertical trunk — extend by half-gap (0.15rem) on each side to bridge the row gaps */
 .hist-sets--tree .hist-set-line::before { content: ''; position: absolute; left: 0; top: -0.15rem; bottom: -0.15rem; border-left: 1px solid var(--border); }
 /* Horizontal branch */

@@ -84,25 +84,21 @@ function createHistoryItemHTML(e) {
         : `<div class="hist-space-badge">${e.colorSpace || '—'}</div>`;
 
     // Shared pct values used in header row
-    const sharedPcts = mode !== 'independent'
-        ? (targetCount === 1 ? [hPct] : [hPct, aPct])
-        : null;
+    // For independent mode: fixed targets show their value, variable targets show null (value goes per-set)
+    const fixedPctsArr = [e.fixedHoverPct, e.fixedActivePct];
+    const sharedPcts = mode === 'independent'
+        ? Array.from({ length: targetCount }, (_, i) => fixedPctsArr[i] != null ? fixedPctsArr[i] : null)
+        : (targetCount === 1 ? [hPct] : [hPct, aPct]);
 
     const setLines = setsArr.map(s => {
         const setBlendPart = (mode === 'per-set-blend' || mode === 'independent') && s.blendHex
             ? `<div class="hist-swatch hist-swatch--blend" style="background:${s.blendHex}" data-color="${s.blendHex.toUpperCase()}" data-tooltip="Blend ${s.blendHex.toUpperCase()}"></div><span class="hist-set-arrow">→</span>`
             : '';
-        const setSpaceBadge = mode === 'independent'
-            ? `<div class="hist-space-badge-wrap"><div class="hist-space-badge hist-space-badge--inline">${s.colorSpace || e.colorSpace || 'srgb'}</div></div>`
-            : '';
+        const setSpaceBadge = `<div class="hist-space-badge-wrap"><div class="hist-space-badge hist-space-badge--inline">${s.colorSpace || e.colorSpace || 'srgb'}</div></div>`;
         const setTargetCount = s.stateResults
             ? s.stateResults.length
             : [s.hoverTargetHex, s.activeTargetHex].filter(Boolean).length;
-        const setPercentBadges = mode === 'independent'
-            ? setTargetCount === 1
-                ? `<span class="hist-set-pct-badge"><span class="tag tag--hover">1</span>${s.hoverPercent || '?'}%</span>`
-                : `<span class="hist-set-pct-badge"><span class="tag tag--hover">1</span>${s.hoverPercent || '?'}%</span><span class="hist-set-pct-badge"><span class="tag tag--active">2</span>${s.activePercent || '?'}%</span>`
-            : '';
+        const setPercentBadges = ''; // % moved: fixed values in header row, variable values in state columns
 
         // Resolve blend hex + color space for this set
         const setBlendHex = s.blendHex || e.blendHex || '';
@@ -110,8 +106,8 @@ function createHistoryItemHTML(e) {
 
         // Build target state rows from stateResults (new) or legacy fallback
         const stateResults = s.stateResults || [
-            s.hoverTargetHex ? { targetHex: s.hoverTargetHex, computed: s.hoverComputed, deltaE: s.hoverDeltaE, tagCls: 'tag--hover', idx: 1 } : null,
-            s.activeTargetHex ? { targetHex: s.activeTargetHex, computed: s.activeComputed, deltaE: s.activeDeltaE, tagCls: 'tag--active', idx: 2 } : null,
+            s.hoverTargetHex ? { targetHex: s.hoverTargetHex, computed: s.hoverComputed, deltaE: s.hoverDeltaE, tagCls: 'tag--hover', idx: 1, percent: s.hoverPercent } : null,
+            s.activeTargetHex ? { targetHex: s.activeTargetHex, computed: s.activeComputed, deltaE: s.activeDeltaE, tagCls: 'tag--active', idx: 2, percent: s.activePercent } : null,
         ].filter(Boolean);
 
         const tagClasses = ['tag--hover', 'tag--active', 'tag--t3', 'tag--t4', 'tag--t5'];
@@ -121,15 +117,19 @@ function createHistoryItemHTML(e) {
             const resultBg = (s.baseHex && setBlendHex && sr.percent != null)
                 ? `color-mix(in ${setColorSpace}, ${s.baseHex} 100%, ${setBlendHex} ${sr.percent}%)`
                 : (sr.computed || '');
+            // For independent mode: show per-set % only for variable (non-fixed) targets
+            const isVarPct = mode === 'independent' && fixedPctsArr[i] == null;
+            const pctVal = isVarPct ? (sr.percent != null ? sr.percent : (i === 0 ? s.hoverPercent : s.activePercent)) : null;
+            const pctLabel = pctVal != null ? `<span class="hist-pct-inline">${pctVal}%</span>` : '';
             return `
             <div class="hist-state-col">
                 <div class="hist-state-row">
                     <div class="hist-overlay-wrap">
-                        <div class="hist-swatch hist-swatch--state" style="background:${sr.targetHex}" data-color="${sr.targetHex ? sr.targetHex.toUpperCase() : ''}" data-tooltip="Target ${n} ${sr.targetHex ? sr.targetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${resultBg}" data-color="${sr.computed ? sr.computed.toUpperCase() : ''}" data-tooltip="Result ${sr.computed ? sr.computed.toUpperCase() : ''}"></div>
+                        <span class="hist-state-badge tag ${tc}">${n}</span><div class="hist-swatch hist-swatch--state" style="background:${sr.targetHex}" data-color="${sr.targetHex ? sr.targetHex.toUpperCase() : ''}" data-tooltip="Target ${n} ${sr.targetHex ? sr.targetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${resultBg}" data-color="${sr.computed ? sr.computed.toUpperCase() : ''}" data-tooltip="Result ${sr.computed ? sr.computed.toUpperCase() : ''}"></div>
                     </div>
                     <div class="hist-tag-col">
-                        <span class="tag ${tc}">${n}</span>
                         <span class="hist-delta ${deltaEClass(sr.deltaE)}">${sr.deltaE != null ? sr.deltaE.toFixed(1) : '?'}</span>
+                        ${pctLabel}
                     </div>
                 </div>
             </div>`;
@@ -138,8 +138,8 @@ function createHistoryItemHTML(e) {
         return `
         <div class="hist-set-line">
             ${setBlendPart}
-            ${setSpaceBadge}
             <span class="hist-set-name">${s.name}</span>
+            ${setSpaceBadge}
             ${setPercentBadges}
             <div class="hist-swatch" style="background:${s.baseHex}" data-color="${s.baseHex ? s.baseHex.toUpperCase() : ''}" data-tooltip="Base ${s.baseHex ? s.baseHex.toUpperCase() : ''}"></div>
             ${stateHTML}
@@ -153,18 +153,17 @@ function createHistoryItemHTML(e) {
         // Ghost left columns mirror the set-line left side
         // For tree mode, padding-left on the header row handles tree-root+trunk offset via CSS
         // ghostLeft mirrors the left-side items of a set-line (before the state cols)
-        // For per-set-blend: [blend swatch][→][set-name][base-swatch]
-        //   → badge replaces the ghost blend swatch (same 32px slot) to stay visible
-        // For other modes: [set-name][base-swatch]
+        // All modes: [set-name][space-badge][base-swatch]
+        // per-set-blend adds: [blend-swatch][→] before set-name
         let ghostLeft;
-        if (mode === 'per-set-blend') {
-            ghostLeft = `<div class="hist-pct-badge-cell"><div class="hist-space-badge">${e.colorSpace || '\u2014'}</div></div><span class="hist-set-arrow hist-ghost" aria-hidden="true">\u2192</span><span class="hist-set-name hist-ghost" aria-hidden="true"></span><div class="hist-swatch hist-ghost" aria-hidden="true"></div>`;
+        if (mode === 'per-set-blend' || (mode === 'independent' && setsArr.some(s => s.blendHex))) {
+            ghostLeft = `<div class="hist-swatch hist-ghost" aria-hidden="true"></div><span class="hist-set-arrow hist-ghost" aria-hidden="true">\u2192</span><span class="hist-set-name hist-ghost" aria-hidden="true"></span><div class="hist-space-badge-wrap hist-ghost" aria-hidden="true"></div><div class="hist-swatch hist-ghost" aria-hidden="true"></div>`;
         } else {
-            ghostLeft = `<span class="hist-set-name hist-ghost" aria-hidden="true"></span><div class="hist-swatch hist-ghost" aria-hidden="true"></div>`;
+            ghostLeft = `<span class="hist-set-name hist-ghost" aria-hidden="true"></span><div class="hist-space-badge-wrap hist-ghost" aria-hidden="true"></div><div class="hist-swatch hist-ghost" aria-hidden="true"></div>`;
         }
         // Each pct col uses a ghost state-row (height:0) to match state-col width exactly
         const pctItems = sharedPcts.map((p, i) =>
-            `<div class="hist-pct-header-col"><div class="hist-state-row hist-ghost" aria-hidden="true"><div class="hist-overlay-wrap"><div class="hist-swatch hist-swatch--state"></div><div class="hist-swatch hist-swatch--result"></div></div><div class="hist-tag-col"><span class="tag ${tagClsList[i] || 'tag--t5'}">0</span><span class="hist-delta">0.0</span></div></div><span class="hist-pct-header"><span class="tag ${tagClsList[i] || 'tag--t5'}">${i + 1}</span>${p}%</span></div>`
+            `<div class="hist-pct-header-col"><div class="hist-state-row hist-ghost" aria-hidden="true"><div class="hist-overlay-wrap"><div class="hist-swatch hist-swatch--state"></div><div class="hist-swatch hist-swatch--result"></div></div><div class="hist-tag-col"><span class="hist-delta">0.0</span></div></div><span class="hist-pct-header"><span class="tag ${tagClsList[i] || 'tag--t5'}">${i + 1}</span>${p != null ? p + '%' : ''}</span></div>`
         ).join('');
         pctHeaderRowHTML = `<div class="hist-pct-header-row">${ghostLeft}${pctItems}</div>`;
     }
@@ -178,7 +177,6 @@ function createHistoryItemHTML(e) {
     ${pctHeaderRowHTML}
     <div class="hist-tree-inner">
       <div class="hist-tree-root">
-        <div class="hist-space-badge">${e.colorSpace || '\u2014'}</div>
         <div class="hist-swatch hist-swatch--blend" style="background:${e.blendHex}" data-color="${e.blendHex ? e.blendHex.toUpperCase() : ''}" data-tooltip="${e.blendHex ? e.blendHex.toUpperCase() : ''}"></div>
         <span class="hist-swatch-lbl">${e.blendHex ? e.blendHex.toUpperCase() : ''}</span>
       </div>
