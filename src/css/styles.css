@@ -1012,6 +1012,13 @@ label {
 [data-tooltip]:hover::after {
   animation: tooltip-in 0.15s ease forwards;
 }
+/* Touch devices: tooltips are unreachable on hover and cause horizontal overflow */
+@media (hover: none) {
+  [data-tooltip]::before,
+  [data-tooltip]::after {
+    display: none;
+  }
+}
 
 /* ── Keyboard focus rings ─────────────────────────────────────────────────── */
 /* Visible focus outline for keyboard navigation (not triggered by mouse)       */

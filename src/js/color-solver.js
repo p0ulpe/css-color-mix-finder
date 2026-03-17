@@ -145,7 +145,7 @@ function findBestColorSpace(baseHex, targets, fixedPcts, forcedSpace) {
 // fixedPcts: array where fixedPcts[i] locks target-i's %  (null = auto)
 // Returns { blendHex, percents: [...], totalDeltaE,
 //           sets: [{ stateResults: [{ targetHex, computed, deltaE, percent }] }] }
-function solveMultiSet(sets, space, fixedPcts) {
+function solveMultiSet(sets, space, fixedPcts, deadline) {
     space = space || 'oklab';
     fixedPcts = fixedPcts || [];
     const numTargets = Math.max(...sets.map(s => s.targets.length));
@@ -279,6 +279,7 @@ function solveMultiSet(sets, space, fixedPcts) {
     // ── Phase 2: fine scan on top candidates ──
     let best = null, bestScore = Infinity;
     for (const { hex: candidateHex } of finalists) {
+        if (deadline && Date.now() > deadline && best) break;
         const ev = evaluateCandidate(candidateHex);
         if (ev.worstDE < bestScore) {
             bestScore = ev.worstDE;
@@ -290,7 +291,7 @@ function solveMultiSet(sets, space, fixedPcts) {
     if (best) {
         const radii = [10, 6, 3];
         for (const radius of radii) {
-            if (bestScore < 0.5) break;
+            if (bestScore < 0.5 || (deadline && Date.now() > deadline)) break;
             const rgb = hexToRgb(best.blendHex);
             const step = radius > 6 ? 2 : 1;
             const refinedCandidates = new Set();
@@ -314,7 +315,7 @@ function solveMultiSet(sets, space, fixedPcts) {
 
         const topHexes = finalists.slice(0, 5).map(f => f.hex);
         for (const hex of topHexes) {
-            if (bestScore < 0.5) break;
+            if (bestScore < 0.5 || (deadline && Date.now() > deadline)) break;
             if (hex === best.blendHex) continue;
             const rgb = hexToRgb(hex);
             const refinedCandidates = new Set();
@@ -365,12 +366,13 @@ function solveMultiSet(sets, space, fixedPcts) {
     return best;
 }
 
-function findBestColorSpaceMultiSet(sets, forcedSpace, fixedPcts) {
+function findBestColorSpaceMultiSet(sets, forcedSpace, fixedPcts, deadline) {
     const spaces = forcedSpace ? [forcedSpace] : ['oklab', 'lab', 'srgb'];
     let best = null, bestWorst = Infinity;
     for (const space of spaces) {
+        if (deadline && Date.now() > deadline && best) break;
         try {
-            const result = solveMultiSet(sets, space, fixedPcts);
+            const result = solveMultiSet(sets, space, fixedPcts, deadline);
             if (!result) continue;
             const worstDE = Math.max(...result.sets.map(s => Math.max(...s.stateResults.map(r => r.deltaE))));
             if (worstDE < bestWorst) {
@@ -615,10 +617,11 @@ function solvePerSetBlendSharedPct(sets, space, fixedPcts) {
     };
 }
 
-function findBestColorSpacePerSetBlend(sets, forcedSpace, fixedPcts) {
+function findBestColorSpacePerSetBlend(sets, forcedSpace, fixedPcts, deadline) {
     const spaces = forcedSpace ? [forcedSpace] : ['oklab', 'lab', 'srgb'];
     let best = null, bestScore = Infinity;
     for (const space of spaces) {
+        if (deadline && Date.now() > deadline && best) break;
         try {
             const result = solvePerSetBlendSharedPct(sets, space, fixedPcts);
             if (!result) continue;
@@ -630,9 +633,10 @@ function findBestColorSpacePerSetBlend(sets, forcedSpace, fixedPcts) {
 }
 
 // ── Fully independent: each set gets its own blend color + percentages ────────
-function solveIndependent(sets, forcedSpace, fixedPcts) {
+function solveIndependent(sets, forcedSpace, fixedPcts, deadline) {
     const setResults = [];
     for (const s of sets) {
+        if (deadline && Date.now() > deadline && setResults.length > 0) break;
         const sol = findBestColorSpace(s.baseHex, s.targets, fixedPcts, forcedSpace);
         if (!sol) return null;
         const r = sol.result;
