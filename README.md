@@ -14,13 +14,13 @@ background-color: color-mix(in oklab, #e0001a 100%, #500001 33%);
 ## Screenshots
 
 Build your sets of colors and choose your filters
-![Color sets input](docs/screenshots/color-sets.png?v=2)
+![Color sets input](docs/screenshots/color-sets-with-filters.png)
 
 Get your blend colors and percentages
-![Results — Check the result](docs/screenshots/results-multi-set.png?v=2)
+![Results — Check the result](docs/screenshots/results-color-mix.png)
 
 Quick access to history and pin previous results to save them
-![History — all modes and filters](docs/screenshots/history.png?v=2)
+![History — all modes and filters](docs/screenshots/history-and-pin.png)
 
 ## Features
 
