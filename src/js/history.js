@@ -79,7 +79,7 @@ function createHistoryItemHTML(e) {
         : [firstSet.hoverTargetHex, firstSet.activeTargetHex].filter(Boolean).length;
 
     // Top-row blend column — removed, blend moved to body
-    const spaceHTML = mode === 'shared' || mode === 'independent'
+    const spaceHTML = mode === 'shared' || mode === 'independent' || mode === 'per-set-blend'
         ? ''
         : `<div class="hist-space-badge">${e.colorSpace || '—'}</div>`;
 
@@ -162,8 +162,8 @@ function createHistoryItemHTML(e) {
         const pctItems = sharedPcts.map((p, i) =>
             `<div class="hist-pct-header-col"><div class="hist-state-row hist-ghost" aria-hidden="true"><div class="hist-overlay-wrap"><div class="hist-swatch hist-swatch--state"></div><div class="hist-swatch hist-swatch--result"></div></div><div class="hist-tag-col"><span class="tag ${tagClsList[i] || 'tag--t5'}">0</span><span class="hist-delta">0.0</span></div></div><span class="hist-pct-header"><span class="tag ${tagClsList[i] || 'tag--t5'}">${i + 1}</span>${p}%</span></div>`
         ).join('');
-        // For tree mode, place color-space badge at start of header row (left column slot)
-        const badgePrefix = mode === 'shared'
+        // For per-set-blend, place color-space badge at start of header row
+        const badgePrefix = mode === 'per-set-blend'
             ? `<div class="hist-pct-badge-cell"><div class="hist-space-badge">${e.colorSpace || '\u2014'}</div></div>`
             : '';
         pctHeaderRowHTML = `<div class="hist-pct-header-row">${badgePrefix}${ghostLeft}${pctItems}</div>`;
@@ -178,7 +178,7 @@ function createHistoryItemHTML(e) {
     ${pctHeaderRowHTML}
     <div class="hist-tree-inner">
       <div class="hist-tree-root">
-
+        <div class="hist-space-badge">${e.colorSpace || '\u2014'}</div>
         <div class="hist-swatch hist-swatch--blend" style="background:${e.blendHex}" data-color="${e.blendHex ? e.blendHex.toUpperCase() : ''}" data-tooltip="${e.blendHex ? e.blendHex.toUpperCase() : ''}"></div>
         <span class="hist-swatch-lbl">${e.blendHex ? e.blendHex.toUpperCase() : ''}</span>
       </div>
