@@ -60,7 +60,9 @@ function calculate() {
     showLoading(true);
 
     const { fixedHoverPct, fixedActivePct } = getFixedPctsFromUI();
-    const mode = document.getElementById('solveModeSelect').value;
+    const sharedBlend = document.getElementById('sharedBlendColor').checked;
+    const sharedPct = document.getElementById('sharedPct').checked;
+    const mode = sharedBlend ? 'shared' : sharedPct ? 'per-set-blend' : 'independent';
     const worker = new Worker('js/solver-worker.js');
 
     worker.onmessage = function(e) {
@@ -78,16 +80,19 @@ function calculate() {
         }
         let resultData;
         if (mode === 'per-set-blend') {
+            const percents = [best.result.hoverPercent, best.result.activePercent];
             resultData = {
                 mode,
                 colorSpace: best.space,
                 hoverPercent: best.result.hoverPercent,
                 activePercent: best.result.activePercent,
+                percents,
                 fixedHoverPct,
                 fixedActivePct,
                 sets: sets.map((s, i) => ({
                     name: s.name,
                     baseHex: s.baseHex,
+                    targets: s.targets,
                     hoverTargetHex: s.hoverTargetHex,
                     activeTargetHex: s.activeTargetHex,
                     blendHex: best.result.sets[i].blendHex,
@@ -95,6 +100,12 @@ function calculate() {
                     hoverDeltaE: best.result.sets[i].hoverDeltaE,
                     activeComputed: best.result.sets[i].activeComputed,
                     activeDeltaE: best.result.sets[i].activeDeltaE,
+                    stateResults: s.targets.map((tHex, ti) => ({
+                        targetHex: tHex,
+                        percent: percents[ti] || percents[percents.length - 1],
+                        computed: ti === 0 ? best.result.sets[i].hoverComputed : best.result.sets[i].activeComputed,
+                        deltaE: ti === 0 ? best.result.sets[i].hoverDeltaE : best.result.sets[i].activeDeltaE,
+                    })),
                 })),
             };
         } else if (mode === 'independent') {
@@ -102,39 +113,59 @@ function calculate() {
                 mode,
                 fixedHoverPct,
                 fixedActivePct,
-                sets: sets.map((s, i) => ({
-                    name: s.name,
-                    baseHex: s.baseHex,
-                    hoverTargetHex: s.hoverTargetHex,
-                    activeTargetHex: s.activeTargetHex,
-                    blendHex: best.sets[i].blendHex,
-                    colorSpace: best.sets[i].space,
-                    hoverPercent: best.sets[i].hoverPercent,
-                    activePercent: best.sets[i].activePercent,
-                    hoverComputed: best.sets[i].hoverComputed,
-                    hoverDeltaE: best.sets[i].hoverDeltaE,
-                    activeComputed: best.sets[i].activeComputed,
-                    activeDeltaE: best.sets[i].activeDeltaE,
-                })),
+                sets: sets.map((s, i) => {
+                    const percents = [best.sets[i].hoverPercent, best.sets[i].activePercent];
+                    return {
+                        name: s.name,
+                        baseHex: s.baseHex,
+                        targets: s.targets,
+                        hoverTargetHex: s.hoverTargetHex,
+                        activeTargetHex: s.activeTargetHex,
+                        blendHex: best.sets[i].blendHex,
+                        colorSpace: best.sets[i].space,
+                        hoverPercent: best.sets[i].hoverPercent,
+                        activePercent: best.sets[i].activePercent,
+                        percents,
+                        hoverComputed: best.sets[i].hoverComputed,
+                        hoverDeltaE: best.sets[i].hoverDeltaE,
+                        activeComputed: best.sets[i].activeComputed,
+                        activeDeltaE: best.sets[i].activeDeltaE,
+                        stateResults: s.targets.map((tHex, ti) => ({
+                            targetHex: tHex,
+                            percent: percents[ti] || percents[percents.length - 1],
+                            computed: ti === 0 ? best.sets[i].hoverComputed : best.sets[i].activeComputed,
+                            deltaE: ti === 0 ? best.sets[i].hoverDeltaE : best.sets[i].activeDeltaE,
+                        })),
+                    };
+                }),
             };
         } else {
+            const percents = [best.result.hoverPercent, best.result.activePercent];
             resultData = {
                 mode: 'shared',
                 blendHex: best.result.blendHex,
                 colorSpace: best.space,
                 hoverPercent: best.result.hoverPercent,
                 activePercent: best.result.activePercent,
+                percents,
                 fixedHoverPct,
                 fixedActivePct,
                 sets: sets.map((s, i) => ({
                     name: s.name,
                     baseHex: s.baseHex,
+                    targets: s.targets,
                     hoverTargetHex: s.hoverTargetHex,
                     activeTargetHex: s.activeTargetHex,
                     hoverComputed: best.result.sets[i].hoverComputed,
                     hoverDeltaE: best.result.sets[i].hoverDeltaE,
                     activeComputed: best.result.sets[i].activeComputed,
                     activeDeltaE: best.result.sets[i].activeDeltaE,
+                    stateResults: s.targets.map((tHex, ti) => ({
+                        targetHex: tHex,
+                        percent: percents[ti] || percents[percents.length - 1],
+                        computed: ti === 0 ? best.result.sets[i].hoverComputed : best.result.sets[i].activeComputed,
+                        deltaE: ti === 0 ? best.result.sets[i].hoverDeltaE : best.result.sets[i].activeDeltaE,
+                    })),
                 })),
             };
         }

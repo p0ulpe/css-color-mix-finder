@@ -1,122 +1,201 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Blend Color Finder</title>
-    <link rel="stylesheet" href="css/styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
     <div class="container">
-        <header>
-            <div class="header-text">
-                <h1>Blend Color Finder</h1>
-                <p class="subtitle">Find the perfect blend color and percentage for your CSS <code>color-mix()</code> design tokens</p>
+      <header>
+        <div class="header-text">
+          <h1>Blend Color Finder</h1>
+          <p class="subtitle">
+            Find the perfect blend color and percentage for your CSS
+            <code>color-mix()</code> design tokens
+          </p>
+        </div>
+        <button
+          class="theme-icon-btn"
+          id="themeToggle"
+          title="Toggle light / dark mode"
+          aria-label="Toggle theme"
+        ></button>
+      </header>
+      <main>
+        <section class="input-section card">
+          <div class="section-header-row">
+            <h2>Color sets</h2>
+          </div>
+          <div id="perfWarning" class="perf-warning" hidden>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+              />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            With 3+ sets and no fixed %, calculation may take ~10–30s. Fixing
+            target 1 % and/or target 2 % will significantly speed things up.
+          </div>
+          <div class="color-space-row">
+            <div class="ctrl-group mode-ctrl-group">
+              <span class="fix-percent-label">Mode</span>
+              <label
+                class="mode-check-label"
+                for="sharedBlendColor"
+                data-tooltip="One blend color works across all color sets"
+              >
+                <input type="checkbox" id="sharedBlendColor" />
+                <span>Shared blend color</span>
+              </label>
+              <label
+                class="mode-check-label"
+                for="sharedPct"
+                data-tooltip="All sets use the same blend percentages"
+              >
+                <input type="checkbox" id="sharedPct" />
+                <span>Shared %</span>
+              </label>
             </div>
-            <button class="theme-icon-btn" id="themeToggle" title="Toggle light / dark mode" aria-label="Toggle theme"></button>
-        </header>
-        <main>
-            <section class="input-section card">
-                <div class="section-header-row">
-                    <h2>Color sets</h2>
-                </div>
-                <div id="perfWarning" class="perf-warning" hidden>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    With 3+ sets and no fixed %, calculation may take ~10–30s. Fixing target 1 % and/or target 2 % will significantly speed things up.
-                </div>
-                <div class="color-space-row">
-                    <div class="ctrl-group">
-                        <label for="solveModeSelect" class="fix-percent-label">Mode</label>
-                        <select id="solveModeSelect" class="color-space-select">
-                            <option value="shared">Shared blend color</option>
-                            <option value="per-set-blend">Per-set blend, shared %</option>
-                            <option value="independent">Independent per set</option>
-                        </select>
-                    </div>
-                    <div class="ctrl-group">
-                        <label for="colorSpaceSelect" class="fix-percent-label">Color space</label>
-                        <select id="colorSpaceSelect" class="color-space-select">
-                            <option value="auto">auto (best fit)</option>
-                            <option value="oklab">oklab</option>
-                            <option value="lab">lab</option>
-                            <option value="srgb">srgb</option>
-                        </select>
-                    </div>
-                    <div class="ctrl-group">
-                        <label for="fixHoverPct" class="fix-percent-label">Fix target 1 %</label>
-                        <input type="number" id="fixHoverPct" class="fix-percent-input" min="1" max="100" placeholder="auto">
-                    </div>
-                    <div class="ctrl-group">
-                        <label for="fixActivePct" class="fix-percent-label">Fix target 2 %</label>
-                        <input type="number" id="fixActivePct" class="fix-percent-input" min="1" max="100" placeholder="auto">
-                    </div>
-                </div>
-                <div id="setsContainer"></div>
-                <div class="sets-actions-row">
-                    <button class="btn-add-set" id="addSetBtn" title="Add color set">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                        Add set
-                    </button>
-                    <button id="calculateBtn" class="btn-calculate">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                        Find blend color
-                    </button>
-                </div>
-            </section>
+            <div class="ctrl-group">
+              <label for="colorSpaceSelect" class="fix-percent-label"
+                >Color space</label
+              >
+              <select id="colorSpaceSelect" class="color-space-select">
+                <option value="auto">auto (best fit)</option>
+                <option value="oklab">oklab</option>
+                <option value="lab">lab</option>
+                <option value="srgb">srgb</option>
+              </select>
+            </div>
+            <div id="fixPctContainer" class="fix-pct-container"></div>
+          </div>
+          <div id="setsContainer"></div>
+          <div class="sets-actions-row">
+            <button class="btn-add-set" id="addSetBtn" title="Add color set">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+              Add set
+            </button>
+            <button id="calculateBtn" class="btn-calculate">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              Find blend color
+            </button>
+          </div>
+        </section>
 
-            <section class="results-section" id="resultsSection" hidden>
-                <div class="result-header">
-                    <h2>Results</h2>
-                    <div class="color-space-badge">
-                        <span class="badge-label">Best color space</span>
-                        <span class="badge-value" id="colorSpaceValue">—</span>
-                    </div>
-                </div>
+        <section class="results-section" id="resultsSection" hidden>
+          <div class="result-header">
+            <h2>Results</h2>
+            <div class="color-space-badge">
+              <span class="badge-label">Best color space</span>
+              <span class="badge-value" id="colorSpaceValue">—</span>
+            </div>
+          </div>
 
-                <div class="blend-color-card card">
-                    <h3>Shared blend values</h3>
-                    <div class="blend-color-result">
-                        <div class="blend-swatch" id="blendSwatch"></div>
-                        <div class="blend-info">
-                            <span class="blend-hex" id="blendHex">—</span>
-                            <button class="copy-btn" id="copyBlendBtn" title="Copy hex">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                            </button>
-                        </div>
-                        <div class="blend-pct-badges">
-                            <div class="blend-pct-badge">
-                                <span class="badge-label">target 1 %</span>
-                                <span class="badge-value" id="blendHoverPctValue">—</span>
-                            </div>
-                            <div class="blend-pct-badge">
-                                <span class="badge-label">target 2 %</span>
-                                <span class="badge-value" id="blendActivePctValue">—</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="resultsContainer"></div>
-            </section>
-
-            <!-- ── History ─────────────────────────────────────────────── -->
-            <section class="history-section card" id="historySection" hidden>
-                <div class="history-header">
-                    <h2>History</h2>
-                    <span class="history-count" id="historyCount"></span>
-                </div>
-                <div class="history-list" id="historyList"></div>
-                <button class="btn-clear-history" id="clearHistoryBtn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    Clear all
+          <div class="blend-color-card card">
+            <h3>Shared blend values</h3>
+            <div class="blend-color-result">
+              <div class="blend-swatch" id="blendSwatch"></div>
+              <div class="blend-info">
+                <span class="blend-hex" id="blendHex">—</span>
+                <button class="copy-btn" id="copyBlendBtn" title="Copy hex">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                    <path
+                      d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+                    />
+                  </svg>
                 </button>
-            </section>
-        </main>
+              </div>
+              <div class="blend-pct-badges"></div>
+            </div>
+          </div>
+
+          <div id="resultsContainer"></div>
+        </section>
+
+        <!-- ── History ─────────────────────────────────────────────── -->
+        <section class="history-section card" id="historySection" hidden>
+          <div class="history-header">
+            <h2>History</h2>
+            <span class="history-count" id="historyCount"></span>
+          </div>
+          <div class="history-list" id="historyList"></div>
+          <button class="btn-clear-history" id="clearHistoryBtn">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+            </svg>
+            Clear all
+          </button>
+        </section>
+      </main>
     </div>
     <script src="js/color-math.js"></script>
     <script src="js/color-solver.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/history.js"></script>
     <script src="js/app.js"></script>
-</body>
+  </body>
 </html>

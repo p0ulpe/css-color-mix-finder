@@ -101,34 +101,38 @@ function createHistoryItemHTML(e) {
         const setPercentBadges = mode === 'independent'
             ? `<span class="hist-set-pct-badge"><span class="tag tag--hover">1</span>${s.hoverPercent || '?'}%</span><span class="hist-set-pct-badge"><span class="tag tag--active">2</span>${s.activePercent || '?'}%</span>`
             : '';
+
+        // Build target state rows from stateResults (new) or legacy fallback
+        const stateResults = s.stateResults || [
+            s.hoverTargetHex ? { targetHex: s.hoverTargetHex, computed: s.hoverComputed, deltaE: s.hoverDeltaE, tagCls: 'tag--hover', idx: 1 } : null,
+            s.activeTargetHex ? { targetHex: s.activeTargetHex, computed: s.activeComputed, deltaE: s.activeDeltaE, tagCls: 'tag--active', idx: 2 } : null,
+        ].filter(Boolean);
+
+        const tagClasses = ['tag--hover', 'tag--active', 'tag--t3', 'tag--t4', 'tag--t5'];
+        const stateHTML = stateResults.map((sr, i) => {
+            const tc = sr.tagCls || tagClasses[i] || 'tag--t5';
+            const n = sr.idx || (i + 1);
+            return `
+            <div class="hist-state-col">
+                <div class="hist-state-row">
+                    <div class="hist-overlay-wrap">
+                        <div class="hist-swatch hist-swatch--state" style="background:${sr.targetHex}" data-tooltip="Target ${n} ${sr.targetHex ? sr.targetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${sr.computed}" data-tooltip="Result ${sr.computed ? sr.computed.toUpperCase() : ''}"></div>
+                    </div>
+                    <div class="hist-tag-col">
+                        <span class="tag ${tc}">${n}</span>
+                        <span class="hist-delta ${deltaEClass(sr.deltaE)}">${sr.deltaE != null ? sr.deltaE.toFixed(1) : '?'}</span>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
         return `
         <div class="hist-set-line">
             ${setBlendSwatch}
             <span class="hist-set-name">${s.name}</span>
             ${setPercentBadges}
             <div class="hist-swatch" style="background:${s.baseHex}" data-tooltip="Base ${s.baseHex ? s.baseHex.toUpperCase() : ''}"></div>
-            <div class="hist-state-col">
-                <div class="hist-state-row">
-                    <div class="hist-overlay-wrap">
-                        <div class="hist-swatch hist-swatch--state" style="background:${s.hoverTargetHex}" data-tooltip="Target 1 ${s.hoverTargetHex ? s.hoverTargetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${s.hoverComputed}" data-tooltip="Result ${s.hoverComputed ? s.hoverComputed.toUpperCase() : ''}"></div>
-                    </div>
-                    <div class="hist-tag-col">
-                        <span class="tag tag--hover">1</span>
-                        <span class="hist-delta ${deltaEClass(s.hoverDeltaE)}">${s.hoverDeltaE != null ? s.hoverDeltaE.toFixed(1) : '?'}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="hist-state-col">
-                <div class="hist-state-row">
-                    <div class="hist-overlay-wrap">
-                        <div class="hist-swatch hist-swatch--state" style="background:${s.activeTargetHex}" data-tooltip="Target 2 ${s.activeTargetHex ? s.activeTargetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${s.activeComputed}" data-tooltip="Result ${s.activeComputed ? s.activeComputed.toUpperCase() : ''}"></div>
-                    </div>
-                    <div class="hist-tag-col">
-                        <span class="tag tag--active">2</span>
-                        <span class="hist-delta ${deltaEClass(s.activeDeltaE)}">${s.activeDeltaE != null ? s.activeDeltaE.toFixed(1) : '?'}</span>
-                    </div>
-                </div>
-            </div>
+            ${stateHTML}
         </div>`;
     }).join('');
 
@@ -203,16 +207,24 @@ function initHistory() {
 }
 
 function restoreFromHistory(entry) {
-    const setsData = entry.sets || [{
+    const setsData = (entry.sets || [{
         name: 'primary',
         baseHex: entry.baseHex,
+        targets: [entry.hoverTargetHex, entry.activeTargetHex].filter(Boolean),
         hoverTargetHex: entry.hoverTargetHex,
         activeTargetHex: entry.activeTargetHex,
-    }];
+    }]).map(s => ({
+        ...s,
+        // Ensure targets array is populated from legacy keys if missing
+        targets: s.targets || [s.hoverTargetHex, s.activeTargetHex].filter(Boolean),
+    }));
     restoreSetsToUI(setsData, true);
     // Restore solve mode
-    const modeSelect = document.getElementById('solveModeSelect');
-    if (modeSelect) modeSelect.value = entry.mode || 'shared';
+    const restoredMode = entry.mode || 'shared';
+    const sharedBlendCb = document.getElementById('sharedBlendColor');
+    const sharedPctCb = document.getElementById('sharedPct');
+    if (sharedBlendCb) sharedBlendCb.checked = restoredMode === 'shared';
+    if (sharedPctCb) sharedPctCb.checked = restoredMode === 'shared' || restoredMode === 'per-set-blend';
     // Restore fixed pct if it was stored
     const pctInput = document.getElementById('fixBlendPct');
     if (pctInput) pctInput.value = entry.fixedPct != null ? entry.fixedPct : '';
@@ -222,11 +234,15 @@ function restoreLastEntry() {
     const entries = loadHistory();
     if (entries.length === 0) return;
     const last = entries[0];
-    const setsData = last.sets || [{
+    const setsData = (last.sets || [{
         name: 'primary',
         baseHex: last.baseHex,
+        targets: [last.hoverTargetHex, last.activeTargetHex].filter(Boolean),
         hoverTargetHex: last.hoverTargetHex,
         activeTargetHex: last.activeTargetHex,
-    }];
+    }]).map(s => ({
+        ...s,
+        targets: s.targets || [s.hoverTargetHex, s.activeTargetHex].filter(Boolean),
+    }));
     restoreSetsToUI(setsData, false);
 }
