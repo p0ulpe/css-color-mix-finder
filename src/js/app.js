@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addSetBtn').addEventListener('click', () => addSet());
 
     document.addEventListener('click', (e) => {
+        const swatch = e.target.closest('.mix-copyable[data-copy]');
+        if (swatch) { copySwatchColor(swatch); return; }
         const btn = e.target.closest('.copy-btn');
         if (!btn) return;
         if (btn.dataset.copy) {
@@ -42,6 +44,13 @@ function copyToClipboard(text, btn) {
     navigator.clipboard.writeText(text).then(() => {
         btn.classList.add('copied');
         setTimeout(() => btn.classList.remove('copied'), 1500);
+    });
+}
+
+function copySwatchColor(el) {
+    navigator.clipboard.writeText(el.dataset.copy).then(() => {
+        el.classList.add('mix-swatch--copied');
+        setTimeout(() => el.classList.remove('mix-swatch--copied'), 1200);
     });
 }
 

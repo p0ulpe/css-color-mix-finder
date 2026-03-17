@@ -481,14 +481,14 @@ function createStateCard(opts) {
             <div class="mix-arrow">+</div>
             <div class="mix-swatch blend-indicator" style="background:${blendHex}" data-tooltip="${blendHex.toUpperCase()}"></div>
             <div class="mix-arrow">=</div>
-            <div class="mix-swatch-labeled">
-                <span class="mix-swatch-label">Result</span>
-                <div class="mix-swatch result-swatch" style="background:color-mix(in ${colorSpace}, ${baseHex} 100%, ${blendHex} ${percent}%)" data-tooltip="${computed.toUpperCase()}"></div>
-            </div>
-            <div class="mix-arrow compare-arrow">vs</div>
-            <div class="mix-swatch-labeled">
-                <span class="mix-swatch-label">Target</span>
-                <div class="mix-swatch target-compare-swatch" style="background:${targetHex}" data-tooltip="${targetHex.toUpperCase()}"></div>
+            <div class="mix-compare-wrap">
+                <div class="mix-compare-labels">
+                    <span class="mix-swatch-label">Result</span>
+                    <span class="mix-swatch-label">Target</span>
+                </div>
+                <div class="mix-compare-swatches">
+                    <div class="mix-swatch result-swatch mix-copyable" style="background:color-mix(in ${colorSpace}, ${baseHex} 100%, ${blendHex} ${percent}%)" data-tooltip="Result ${computed.toUpperCase()}" data-copy="${computed.toUpperCase()}"></div><div class="mix-swatch target-compare-swatch mix-copyable" style="background:${targetHex}" data-tooltip="Target ${targetHex.toUpperCase()}" data-copy="${targetHex.toUpperCase()}"></div>
+                </div>
             </div>
         </div>
         <div class="state-details">
@@ -511,7 +511,7 @@ function createStateCard(opts) {
                 </div>
             </div>
             <div class="detail-row">
-                <span class="detail-label">Delta E</span>
+                <span class="detail-label" data-tooltip="ΔE: color accuracy. 0 = perfect, <2 imperceptible, <5 slight, ≥5 noticeable">Delta E</span>
                 <span class="detail-value delta-e ${d.cls}">${d.text}</span>
             </div>
         </div>
