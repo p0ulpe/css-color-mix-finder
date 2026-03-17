@@ -298,6 +298,42 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
 .hist-state-col { align-items: center; }
 .hist-set-break { display: none; }
 
+/* ── Pct header row ───────────────────────────────────────────────────────── */
+/* Ghost elements mirror left-side of set-line for exact column alignment */
+.hist-pct-header-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1px; }
+.hist-ghost { visibility: hidden; pointer-events: none; flex-shrink: 0; }
+/* Each pct col contains a height-0 ghost state-row (for width matching) + the visible badge */
+.hist-pct-header-col { display: flex; flex-direction: column; align-items: flex-start; flex-shrink: 0; gap: 0; }
+.hist-pct-header-col .hist-ghost { height: 0; overflow: hidden; }
+/* Badge is 64px wide (= 2 × 32px overlay-wrap), centered over the two swatches */
+.hist-pct-header { width: 64px; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); letter-spacing: 0.02em; white-space: nowrap; }
+
+/* ── Tree layout (shared blend mode) ──────────────────────────────────────── */
+/* hist-body--tree stacks header row above tree-inner (column direction)       */
+.hist-body--tree { display: flex; flex-direction: column; }
+.hist-tree-inner { display: flex; align-items: stretch; }
+.hist-tree-root { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; min-width: 58px; position: relative; }
+.hist-tree-root .hist-space-badge { margin-bottom: 4px; }
+.hist-tree-root::after { content: ''; position: absolute; left: calc(50% + 16px); right: 0; top: 50%; border-top: 1px solid var(--border); }
+.hist-sets--tree { flex: 1; }
+.hist-sets--tree .hist-set-line { position: relative; padding-left: 18px; }
+/* Header row sits above hist-tree-inner; offset = tree-root width (58px) + trunk padding (18px) */
+.hist-body--tree > .hist-pct-header-row { padding-left: calc(58px + 18px); }
+/* Vertical trunk */
+.hist-sets--tree .hist-set-line::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; border-left: 1px solid var(--border); }
+/* Horizontal branch */
+.hist-sets--tree .hist-set-line::after { content: ''; position: absolute; left: 0; top: 50%; width: 14px; border-top: 1px solid var(--border); }
+/* First: trunk starts from center */
+.hist-sets--tree .hist-set-line:first-child::before { top: 50%; }
+/* Last: trunk ends at center */
+.hist-sets--tree .hist-set-line:last-child::before { bottom: 50%; }
+/* Single set: no trunk */
+.hist-sets--tree .hist-set-line:only-child::before { display: none; }
+
+/* ── Per-set arrow connector ──────────────────────────────────────────────── */
+.hist-set-arrow { color: var(--text-muted); opacity: 0.5; font-size: 0.85rem; flex-shrink: 0; line-height: 1; }
+.hist-space-badge--inline { font-size: 0.55rem; padding: 0.1em 0.45em; }
+
 /* Flash animation when inputs are restored from history */
 @keyframes hist-restore-flash { 0%,100% { border-color: var(--border); } 50% { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110,123,255,0.15); } }
 .input-section.hist-restored { animation: hist-restore-flash 0.7s ease; }
@@ -313,4 +349,12 @@ label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; fon
   .hist-set-pct-badge { min-width: unset; }
   .hist-swatch { width: 28px; height: 28px; }
   .hist-swatch--result { width: 28px; height: 28px; }
+  .hist-body--tree { gap: 0.4rem; }
+  .hist-tree-inner { flex-direction: column; gap: 0.4rem; }
+  .hist-tree-root { flex-direction: row; gap: 0.5rem; min-width: unset; }
+  .hist-tree-root::after { display: none; }
+  .hist-body--tree > .hist-pct-header-row { padding-left: 0; }
+  .hist-sets--tree .hist-set-line { padding-left: 0; }
+  .hist-sets--tree .hist-set-line::before,
+  .hist-sets--tree .hist-set-line::after { display: none; }
 }
