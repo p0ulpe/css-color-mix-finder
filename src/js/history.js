@@ -86,9 +86,10 @@ function createHistoryItemHTML(e) {
     // Shared pct values used in header row
     // For independent mode: fixed targets show their value, variable targets show null (value goes per-set)
     const fixedPctsArr = [e.fixedHoverPct, e.fixedActivePct];
+    const allPercents = e.percents || [hPct, aPct];
     const sharedPcts = mode === 'independent'
         ? Array.from({ length: targetCount }, (_, i) => fixedPctsArr[i] != null ? fixedPctsArr[i] : null)
-        : (targetCount === 1 ? [hPct] : [hPct, aPct]);
+        : allPercents.slice(0, targetCount);
 
     const setLines = setsArr.map(s => {
         const setBlendPart = (mode === 'per-set-blend' || mode === 'independent') && s.blendHex

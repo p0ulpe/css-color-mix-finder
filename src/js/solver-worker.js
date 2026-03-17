@@ -2,15 +2,17 @@
 self.importScripts('./color-math.js', './color-solver.js');
 
 self.onmessage = function(e) {
-    const { mode, sets, forcedSpace, fixedHoverPct, fixedActivePct } = e.data;
+    const { mode, sets, forcedSpace, fixedPcts, fixedHoverPct, fixedActivePct } = e.data;
+    // Use fixedPcts array if provided, otherwise build from legacy hover/active params
+    const pcts = fixedPcts || [fixedHoverPct, fixedActivePct];
     try {
         let result;
         if (mode === 'per-set-blend') {
-            result = findBestColorSpacePerSetBlend(sets, forcedSpace, fixedHoverPct, fixedActivePct);
+            result = findBestColorSpacePerSetBlend(sets, forcedSpace, pcts);
         } else if (mode === 'independent') {
-            result = solveIndependent(sets, forcedSpace, fixedHoverPct, fixedActivePct);
+            result = solveIndependent(sets, forcedSpace, pcts);
         } else {
-            result = findBestColorSpaceMultiSet(sets, forcedSpace, fixedHoverPct, fixedActivePct);
+            result = findBestColorSpaceMultiSet(sets, forcedSpace, pcts);
         }
         self.postMessage({ ok: true, result });
     } catch(err) {

@@ -88,6 +88,7 @@ function addTargetCol(row, targetHex, targetIdx) {
     refreshTargetLabels(row);
     updateFixPctInputs();
     updateAddTargetButtons();
+    updatePerfWarning();
   });
 
   // Insert before the add-target button and remove-set button
@@ -97,6 +98,7 @@ function addTargetCol(row, targetHex, targetIdx) {
   refreshTargetLabels(row);
   updateFixPctInputs();
   updateAddTargetButtons();
+  updatePerfWarning();
 }
 
 // Re-numbers target column labels after add/remove
@@ -243,6 +245,7 @@ function createSetRow(data) {
       refreshTargetLabels(row);
       updateFixPctInputs();
       updateAddTargetButtons();
+      updatePerfWarning();
     });
     const addBtn = row.querySelector(".set-add-target-btn");
     row.insertBefore(col, addBtn);
@@ -257,8 +260,25 @@ function updateRemoveButtons() {
     r.querySelector(".set-remove-btn").style.visibility =
       rows.length > 1 ? "visible" : "hidden";
   });
+  updatePerfWarning();
+}
+
+function updatePerfWarning() {
   const warn = document.getElementById("perfWarning");
-  if (warn) warn.hidden = rows.length < 3;
+  if (!warn) return;
+  const rows = document.querySelectorAll(".set-row");
+  const setCount = rows.length;
+  const maxTargets = Math.max(...Array.from(rows).map(r => r.querySelectorAll(".set-target-col").length), 0);
+  const manySets = setCount >= 3;
+  const manyTargets = maxTargets >= 4;
+  warn.hidden = !manySets && !manyTargets;
+  if (warn.hidden) return;
+  const txt = document.getElementById("perfWarningText");
+  if (!txt) return;
+  const reasons = [];
+  if (manySets) reasons.push(setCount + " sets");
+  if (manyTargets) reasons.push(maxTargets + " targets per set");
+  txt.textContent = "With " + reasons.join(" and ") + " and no fixed %, calculation may take longer. Fixing some target percentages will significantly speed things up.";
 }
 
 function addSet(data) {
