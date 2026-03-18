@@ -92,11 +92,11 @@
 /* Delta E quality indicators: dark-mode values are too light for white bg */
 :root.light .delta-e.good,
 :root.light .hist-delta.good {
-  color: #15803d;
+  color: #16a34a;
 }
 :root.light .delta-e.ok,
 :root.light .hist-delta.ok {
-  color: #b45309;
+  color: #d97706;
 }
 :root.light .delta-e.bad,
 :root.light .hist-delta.bad {
