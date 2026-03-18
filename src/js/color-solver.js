@@ -154,8 +154,10 @@ function findBestColorSpace(baseHex, targets, fixedPcts, forcedSpace, fastMode) 
     for (const space of spaces) {
         try {
             const result = solveWithConstraints(baseHex, targets, space, fixedPcts, fastMode);
-            if (result && result.totalDeltaE < bestScore) {
-                bestScore = result.totalDeltaE;
+            if (!result) continue;
+            const worstDE = Math.max(...result.stateResults.map(r => r.deltaE));
+            if (worstDE < bestScore) {
+                bestScore = worstDE;
                 best = { space, result };
             }
         } catch(e) {}
@@ -478,18 +480,19 @@ function solveWithConstraints(baseHex, targets, space, fixedPcts, fastMode) {
     let best = null, bestScore = Infinity;
     for (const candidateHex of cs) {
         const fits = [];
-        let totalDE = 0, valid = true;
+        let worstDE = 0, totalDE = 0, valid = true;
         for (let ti = 0; ti < targets.length; ti++) {
             const fit = fixedPcts[ti] != null
                 ? fitAtFixedPct(baseHex, targets[ti], candidateHex, fixedPcts[ti], space)
                 : findBestPercent(baseHex, targets[ti], candidateHex, space);
             if (!fit) { valid = false; break; }
             fits.push(fit);
+            if (fit.deltaE > worstDE) worstDE = fit.deltaE;
             totalDE += fit.deltaE;
         }
         if (!valid) continue;
-        if (totalDE < bestScore) {
-            bestScore = totalDE;
+        if (worstDE < bestScore) {
+            bestScore = worstDE;
             best = {
                 blendHex: candidateHex,
                 percents: fits.map(f => f.percent),
@@ -529,43 +532,41 @@ function solvePerSetBlendSharedPct(sets, space, fixedPcts, fastMode) {
         }
         if (sols.length === 0) return null;
 
+        // Use full generateBlendCandidates (with neighbourhood search) between all pairs
         const candidateBlends = new Set();
-        for (const sol of sols) candidateBlends.add(sol.blendHex);
-
-        if (sols.length > 1) {
-            const rgbs = sols.map(x => hexToRgb(x.blendHex));
-            candidateBlends.add(rgbToHex({
+        const solHexes = sols.map(x => x.blendHex);
+        if (solHexes.length === 1) {
+            for (const c of generateBlendCandidates(solHexes[0], solHexes[0], fastMode)) candidateBlends.add(c);
+        } else {
+            for (let i = 0; i < solHexes.length; i++) {
+                for (let j = i + 1; j < solHexes.length; j++) {
+                    for (const c of generateBlendCandidates(solHexes[i], solHexes[j], fastMode)) candidateBlends.add(c);
+                }
+            }
+            // Also add centroid
+            const rgbs = solHexes.map(h => hexToRgb(h));
+            const centroid = rgbToHex({
                 r: Math.round(rgbs.reduce((a,c)=>a+c.r,0)/rgbs.length),
                 g: Math.round(rgbs.reduce((a,c)=>a+c.g,0)/rgbs.length),
                 b: Math.round(rgbs.reduce((a,c)=>a+c.b,0)/rgbs.length),
-            }));
-            for (let i = 0; i < sols.length; i++) {
-                for (let j = i + 1; j < sols.length; j++) {
-                    const rgb1 = hexToRgb(sols[i].blendHex), rgb2 = hexToRgb(sols[j].blendHex);
-                    for (let t = 0; t <= 20; t++) {
-                        const f = t / 20;
-                        candidateBlends.add(rgbToHex({
-                            r: Math.max(0, Math.min(255, Math.round(rgb1.r*(1-f)+rgb2.r*f))),
-                            g: Math.max(0, Math.min(255, Math.round(rgb1.g*(1-f)+rgb2.g*f))),
-                            b: Math.max(0, Math.min(255, Math.round(rgb1.b*(1-f)+rgb2.b*f))),
-                        }));
-                    }
-                }
-            }
+            });
+            candidateBlends.add(centroid);
+            for (const c of generateBlendCandidates(solHexes[0], centroid, fastMode)) candidateBlends.add(c);
         }
 
         let best = null, bestDE = Infinity;
         for (const cHex of candidateBlends) {
-            let totalDE = 0;
+            let worstDE = 0;
             const stateResults = [];
             for (let ti = 0; ti < pcts.length && ti < s.targets.length; ti++) {
                 const comp = colorMix(s.baseHex, cHex, pcts[ti], space);
                 const dE = deltaE(comp, s.targets[ti]);
-                totalDE += dE;
+                if (dE > worstDE) worstDE = dE;
                 stateResults.push({ targetHex: s.targets[ti], computed: comp, deltaE: dE, percent: pcts[ti] });
             }
-            if (totalDE < bestDE) {
-                bestDE = totalDE;
+            if (worstDE < bestDE) {
+                bestDE = worstDE;
+                const totalDE = stateResults.reduce((a, r) => a + r.deltaE, 0);
                 best = {
                     blendHex: cHex,
                     stateResults,
