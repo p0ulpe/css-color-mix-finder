@@ -1,3 +1,19 @@
+function escapeHTML(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function sanitizeHex(hex) {
+  if (typeof hex !== 'string') return '#000000';
+  const clean = hex.trim().replace('#', '');
+  const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return '#000000';
+  return '#' + full.toLowerCase();
+}
 function setSwatchColor(el, hex) {
   if (!el) return;
   if (typeof el === "string") el = document.getElementById(el);
@@ -181,7 +197,7 @@ function createSetRow(data) {
   row.dataset.setIdx = idx;
   row.innerHTML = `
     <div class="set-name-col">
-      <input type="text" id="set-label-${idx}" name="set-label-${idx}" class="set-label-input" value="${name}" placeholder="label" spellcheck="false" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" data-bwignore role="presentation">
+      <input type="text" id="set-label-${idx}" name="set-label-${idx}" class="set-label-input" value="${escapeHTML(name)}" placeholder="label" spellcheck="false" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" data-bwignore role="presentation">
     </div>
     <div class="set-color-col">
       <span class="set-col-label">base color <span class="tag">default</span></span>
@@ -426,21 +442,21 @@ function renderResults(data) {
     setDiv.className = "result-set-group";
 
     if (mode === "shared") {
-      setDiv.innerHTML = `<div class="result-set-label">${s.name}</div>`;
+      setDiv.innerHTML = `<div class="result-set-label">${escapeHTML(s.name)}</div>`;
     } else {
       const pctBadges = mode === "independent"
         ? `<span class="result-set-pcts">${percents.map((p, i) => `${i + 1}: ${p}%`).join(" · ")}</span>`
         : "";
       const spaceBadge = mode === "independent"
-        ? `<span class="hist-space-badge">${colorSpace}</span>`
+        ? `<span class="hist-space-badge">${escapeHTML(colorSpace)}</span>`
         : "";
       setDiv.innerHTML = `
         <div class="result-set-label-row">
-          <span class="result-set-label">${s.name}</span>
+          <span class="result-set-label">${escapeHTML(s.name)}</span>
           <div class="result-set-blend-row">
-            <div class="tiny-swatch" style="background:${blendHex}"></div>
-            <span class="result-blend-hex">${blendHex.toUpperCase()}</span>
-            <button class="copy-btn" data-copy="${blendHex.toUpperCase()}" title="Copy blend hex">${_COPY_SVG}</button>
+            <div class="tiny-swatch" style="background:${sanitizeHex(blendHex)}"></div>
+            <span class="result-blend-hex">${escapeHTML(blendHex.toUpperCase())}</span>
+            <button class="copy-btn" data-copy="${escapeHTML(blendHex.toUpperCase())}" title="Copy blend hex">${_COPY_SVG}</button>
             ${pctBadges}${spaceBadge}
           </div>
         </div>`;
@@ -490,16 +506,21 @@ function createStateCard(opts) {
     deltaE: dE,
   } = opts;
   const d = formatDeltaE(dE);
-  const cssVal = `color-mix(in ${colorSpace}, ${baseHex} 100%, ${blendHex} ${percent}%)`;
+  const sBaseHex = sanitizeHex(baseHex);
+  const sBlendHex = sanitizeHex(blendHex);
+  const sTargetHex = sanitizeHex(targetHex);
+  const sComputed = sanitizeHex(computed);
+  const sColorSpace = escapeHTML(colorSpace);
+  const cssVal = `color-mix(in ${sColorSpace}, ${sBaseHex} 100%, ${sBlendHex} ${percent}%)`;
 
   const card = document.createElement("div");
   card.className = "state-card card";
   card.innerHTML = `
-        <div class="state-label"><span class="tag ${tCls}">${tag}</span></div>
+        <div class="state-label"><span class="tag ${escapeHTML(tCls)}">${escapeHTML(tag)}</span></div>
         <div class="state-mix-preview">
-            <div class="mix-swatch" style="background:${baseHex}" data-tooltip="${baseHex.toUpperCase()}"></div>
+            <div class="mix-swatch" style="background:${sBaseHex}" data-tooltip="${sBaseHex.toUpperCase()}"></div>
             <div class="mix-arrow">+</div>
-            <div class="mix-swatch blend-indicator" style="background:${blendHex}" data-tooltip="${blendHex.toUpperCase()}"></div>
+            <div class="mix-swatch blend-indicator" style="background:${sBlendHex}" data-tooltip="${sBlendHex.toUpperCase()}"></div>
             <div class="mix-arrow">=</div>
             <div class="mix-compare-wrap">
                 <div class="mix-compare-labels">
@@ -507,7 +528,7 @@ function createStateCard(opts) {
                     <span class="mix-swatch-label">Target</span>
                 </div>
                 <div class="mix-compare-swatches">
-                    <div class="mix-swatch result-swatch mix-copyable" style="background:color-mix(in ${colorSpace}, ${baseHex} 100%, ${blendHex} ${percent}%)" data-tooltip="Result ${computed.toUpperCase()}" data-copy="${computed.toUpperCase()}"></div><div class="mix-swatch target-compare-swatch mix-copyable" style="background:${targetHex}" data-tooltip="Target ${targetHex.toUpperCase()}" data-copy="${targetHex.toUpperCase()}"></div>
+                    <div class="mix-swatch result-swatch mix-copyable" style="background:color-mix(in ${sColorSpace}, ${sBaseHex} 100%, ${sBlendHex} ${percent}%)" data-tooltip="Result ${sComputed.toUpperCase()}" data-copy="${sComputed.toUpperCase()}"></div><div class="mix-swatch target-compare-swatch mix-copyable" style="background:${sTargetHex}" data-tooltip="Target ${sTargetHex.toUpperCase()}" data-copy="${sTargetHex.toUpperCase()}"></div>
                 </div>
             </div>
         </div>
@@ -519,24 +540,24 @@ function createStateCard(opts) {
             <div class="detail-row">
                 <span class="detail-label">Target</span>
                 <div class="detail-color">
-                    <div class="tiny-swatch" style="background:${targetHex}"></div>
-                    <span>${targetHex.toUpperCase()}</span>
+                    <div class="tiny-swatch" style="background:${sTargetHex}"></div>
+                    <span>${sTargetHex.toUpperCase()}</span>
                 </div>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Result</span>
                 <div class="detail-color">
-                    <div class="tiny-swatch" style="background:${computed}"></div>
-                    <span>${computed.toUpperCase()}</span>
+                    <div class="tiny-swatch" style="background:${sComputed}"></div>
+                    <span>${sComputed.toUpperCase()}</span>
                 </div>
             </div>
             <div class="detail-row">
                 <span class="detail-label" data-tooltip="ΔE: color accuracy. 0 = perfect, <2 imperceptible, <5 slight, ≥5 noticeable">Delta E</span>
-                <span class="detail-value delta-e ${d.cls}">${d.text}</span>
+                <span class="detail-value delta-e ${escapeHTML(d.cls)}">${escapeHTML(d.text)}</span>
             </div>
         </div>
-        <div class="css-snippet">${cssVal}
-            <button class="copy-btn copy-snippet-btn" data-copy="${cssVal}">
+        <div class="css-snippet">${escapeHTML(cssVal)}
+            <button class="copy-btn copy-snippet-btn" data-copy="${escapeHTML(cssVal)}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
             </button>
         </div>

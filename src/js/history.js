@@ -6,11 +6,83 @@
 const HISTORY_KEY = 'blend-finder-history';
 const HISTORY_MAX = 10;
 
+// ── Security helpers ────────────────────────────────────────────────────────
+
+function _escapeHTML(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+function _sanitizeHex(hex) {
+    if (typeof hex !== 'string') return '#000000';
+    const clean = hex.trim().replace('#', '');
+    const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+    if (!/^[0-9a-fA-F]{6}$/.test(full)) return '#000000';
+    return '#' + full.toLowerCase();
+}
+function _sanitizeName(name) {
+    if (typeof name !== 'string') return 'set';
+    return name.slice(0, 64);
+}
+function _sanitizeColorSpace(cs) {
+    return ['oklab', 'lab', 'srgb'].includes(cs) ? cs : 'oklab';
+}
+function _sanitizeEntry(e) {
+    if (typeof e !== 'object' || e === null) return null;
+    if (typeof e.id !== 'number') return null;
+    return {
+        id: e.id,
+        pinned: Boolean(e.pinned),
+        mode: ['shared', 'per-set-blend', 'independent'].includes(e.mode) ? e.mode : 'shared',
+        blendHex: e.blendHex ? _sanitizeHex(e.blendHex) : undefined,
+        colorSpace: _sanitizeColorSpace(e.colorSpace),
+        hoverPercent: typeof e.hoverPercent === 'number' ? e.hoverPercent : undefined,
+        activePercent: typeof e.activePercent === 'number' ? e.activePercent : undefined,
+        fixedHoverPct: typeof e.fixedHoverPct === 'number' ? e.fixedHoverPct : null,
+        fixedActivePct: typeof e.fixedActivePct === 'number' ? e.fixedActivePct : null,
+        fixedSpace: e.fixedSpace ? _sanitizeColorSpace(e.fixedSpace) : null,
+        percents: Array.isArray(e.percents) ? e.percents.filter(p => typeof p === 'number') : undefined,
+        sets: Array.isArray(e.sets) ? e.sets.map(s => {
+            if (typeof s !== 'object' || s === null) return null;
+            return {
+                name: _sanitizeName(s.name),
+                baseHex: _sanitizeHex(s.baseHex),
+                blendHex: s.blendHex ? _sanitizeHex(s.blendHex) : undefined,
+                colorSpace: s.colorSpace ? _sanitizeColorSpace(s.colorSpace) : undefined,
+                targets: Array.isArray(s.targets) ? s.targets.map(_sanitizeHex) : [],
+                hoverTargetHex: s.hoverTargetHex ? _sanitizeHex(s.hoverTargetHex) : undefined,
+                activeTargetHex: s.activeTargetHex ? _sanitizeHex(s.activeTargetHex) : undefined,
+                hoverComputed: s.hoverComputed ? _sanitizeHex(s.hoverComputed) : undefined,
+                activeComputed: s.activeComputed ? _sanitizeHex(s.activeComputed) : undefined,
+                hoverPercent: typeof s.hoverPercent === 'number' ? s.hoverPercent : undefined,
+                activePercent: typeof s.activePercent === 'number' ? s.activePercent : undefined,
+                hoverDeltaE: typeof s.hoverDeltaE === 'number' ? s.hoverDeltaE : 0,
+                activeDeltaE: typeof s.activeDeltaE === 'number' ? s.activeDeltaE : 0,
+                stateResults: Array.isArray(s.stateResults) ? s.stateResults.map(r => {
+                    if (typeof r !== 'object' || r === null) return null;
+                    return {
+                        targetHex: _sanitizeHex(r.targetHex),
+                        computed: _sanitizeHex(r.computed),
+                        deltaE: typeof r.deltaE === 'number' ? r.deltaE : 0,
+                        percent: typeof r.percent === 'number' ? r.percent : null,
+                    };
+                }).filter(Boolean) : undefined,
+            };
+        }).filter(Boolean) : [],
+    };
+}
+
 // ── Storage helpers ─────────────────────────────────────────────────────────
 
 function loadHistory() {
     try {
-        return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        if (!Array.isArray(raw)) return [];
+        return raw.map(_sanitizeEntry).filter(Boolean);
     } catch {
         return [];
     }
@@ -81,7 +153,7 @@ function createHistoryItemHTML(e) {
     // Top-row blend column — removed, blend moved to body
     const spaceHTML = mode === 'shared' || mode === 'independent' || mode === 'per-set-blend'
         ? ''
-        : `<div class="hist-space-badge">${e.colorSpace || '—'}</div>`;
+        : `<div class="hist-space-badge">${_escapeHTML(e.colorSpace || '—')}</div>`;
 
     // Shared pct values used in header row
     // For independent mode: fixed targets show their value, variable targets show null (value goes per-set)
@@ -93,9 +165,9 @@ function createHistoryItemHTML(e) {
 
     const setLines = setsArr.map(s => {
         const setBlendPart = (mode === 'per-set-blend' || mode === 'independent') && s.blendHex
-            ? `<div class="hist-swatch hist-swatch--blend" style="background:${s.blendHex}" data-color="${s.blendHex.toUpperCase()}" data-tooltip="Blend ${s.blendHex.toUpperCase()}"></div><span class="hist-set-arrow">→</span>`
+            ? `<div class="hist-swatch hist-swatch--blend" style="background:${_sanitizeHex(s.blendHex)}" data-color="${_escapeHTML(s.blendHex.toUpperCase())}" data-tooltip="Blend ${_escapeHTML(s.blendHex.toUpperCase())}"></div><span class="hist-set-arrow">→</span>`
             : '';
-        const setSpaceBadge = `<div class="hist-space-badge-wrap"><div class="hist-space-badge hist-space-badge--inline">${s.colorSpace || e.colorSpace || 'srgb'}</div></div>`;
+        const setSpaceBadge = `<div class="hist-space-badge-wrap"><div class="hist-space-badge hist-space-badge--inline">${_escapeHTML(s.colorSpace || e.colorSpace || 'srgb')}</div></div>`;
         const setTargetCount = s.stateResults
             ? s.stateResults.length
             : [s.hoverTargetHex, s.activeTargetHex].filter(Boolean).length;
@@ -116,8 +188,8 @@ function createHistoryItemHTML(e) {
             const tc = sr.tagCls || tagClasses[i] || 'tag--t5';
             const n = sr.idx || (i + 1);
             const resultBg = (s.baseHex && setBlendHex && sr.percent != null)
-                ? `color-mix(in ${setColorSpace}, ${s.baseHex} 100%, ${setBlendHex} ${sr.percent}%)`
-                : (sr.computed || '');
+                ? `color-mix(in ${_escapeHTML(setColorSpace)}, ${_sanitizeHex(s.baseHex)} 100%, ${_sanitizeHex(setBlendHex)} ${sr.percent}%)`
+                : (_sanitizeHex(sr.computed) || '');
             // For independent mode: show per-set % only for variable (non-fixed) targets
             const isVarPct = mode === 'independent' && fixedPctsArr[i] == null;
             const pctVal = isVarPct ? (sr.percent != null ? sr.percent : (i === 0 ? s.hoverPercent : s.activePercent)) : null;
@@ -126,7 +198,7 @@ function createHistoryItemHTML(e) {
             <div class="hist-state-col">
                 <div class="hist-state-row">
                     <div class="hist-overlay-wrap">
-                        <span class="hist-state-badge tag ${tc}">${n}</span><div class="hist-swatch hist-swatch--state" style="background:${sr.targetHex}" data-color="${sr.targetHex ? sr.targetHex.toUpperCase() : ''}" data-tooltip="Target ${n} ${sr.targetHex ? sr.targetHex.toUpperCase() : ''}"></div><div class="hist-swatch hist-swatch--result" style="background:${resultBg}" data-color="${sr.computed ? sr.computed.toUpperCase() : ''}" data-tooltip="Result ${sr.computed ? sr.computed.toUpperCase() : ''}"></div>
+                        <span class="hist-state-badge tag ${_escapeHTML(tc)}">${n}</span><div class="hist-swatch hist-swatch--state" style="background:${_sanitizeHex(sr.targetHex)}" data-color="${_escapeHTML(sr.targetHex ? sr.targetHex.toUpperCase() : '')}" data-tooltip="Target ${n} ${_escapeHTML(sr.targetHex ? sr.targetHex.toUpperCase() : '')}"></div><div class="hist-swatch hist-swatch--result" style="background:${resultBg}" data-color="${_escapeHTML(sr.computed ? sr.computed.toUpperCase() : '')}" data-tooltip="Result ${_escapeHTML(sr.computed ? sr.computed.toUpperCase() : '')}"></div>
                     </div>
                     <div class="hist-tag-col">
                         <span class="hist-delta ${deltaEClass(sr.deltaE)}">${sr.deltaE != null ? sr.deltaE.toFixed(1) : '?'}</span>
@@ -139,10 +211,10 @@ function createHistoryItemHTML(e) {
         return `
         <div class="hist-set-line">
             ${setBlendPart}
-            <span class="hist-set-name">${s.name}</span>
+            <span class="hist-set-name">${_escapeHTML(s.name)}</span>
             ${setSpaceBadge}
             ${setPercentBadges}
-            <div class="hist-swatch" style="background:${s.baseHex}" data-color="${s.baseHex ? s.baseHex.toUpperCase() : ''}" data-tooltip="Base ${s.baseHex ? s.baseHex.toUpperCase() : ''}"></div>
+            <div class="hist-swatch" style="background:${_sanitizeHex(s.baseHex)}" data-color="${_escapeHTML(s.baseHex ? s.baseHex.toUpperCase() : '')}" data-tooltip="Base ${_escapeHTML(s.baseHex ? s.baseHex.toUpperCase() : '')}"></div>
             ${stateHTML}
         </div>`;
     }).join('');
@@ -180,8 +252,8 @@ function createHistoryItemHTML(e) {
     ${pctHeaderRowHTML}
     <div class="hist-tree-inner">
       <div class="hist-tree-root">
-        <div class="hist-swatch hist-swatch--blend" style="background:${e.blendHex}" data-color="${e.blendHex ? e.blendHex.toUpperCase() : ''}" data-tooltip="${e.blendHex ? e.blendHex.toUpperCase() : ''}"></div>
-        <span class="hist-swatch-lbl">${e.blendHex ? e.blendHex.toUpperCase() : ''}</span>
+        <div class="hist-swatch hist-swatch--blend" style="background:${_sanitizeHex(e.blendHex)}" data-color="${_escapeHTML(e.blendHex ? e.blendHex.toUpperCase() : '')}" data-tooltip="${_escapeHTML(e.blendHex ? e.blendHex.toUpperCase() : '')}"></div>
+        <span class="hist-swatch-lbl">${_escapeHTML(e.blendHex ? e.blendHex.toUpperCase() : '')}</span>
       </div>
       <div class="hist-sets hist-sets--tree">${setLines}</div>
     </div>
