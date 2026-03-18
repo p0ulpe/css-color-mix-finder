@@ -523,50 +523,77 @@ function solvePerSetBlendSharedPct(sets, space, fixedPcts, fastMode) {
     fixedPcts = fixedPcts || [];
     const numTargets = Math.max(...sets.map(s => s.targets.length));
 
-    // For a single set at fixed pcts, find best compromise blend
-    function bestBlendForSet(s, pcts) {
+    // Light blend search: interpolation between analytical seeds (fast, for pct grid search)
+    function bestBlendForSetLight(s, pcts) {
         const sols = [];
         for (let ti = 0; ti < pcts.length && ti < s.targets.length; ti++) {
             const sol = solveBlendColorAtPct(s.baseHex, s.targets[ti], pcts[ti], space);
-            if (sol) sols.push({ blendHex: sol.blendHex, ti });
+            if (sol) sols.push(sol.blendHex);
         }
         if (sols.length === 0) return null;
-
-        // Use full generateBlendCandidates (with neighbourhood search) between all pairs
         const candidateBlends = new Set();
-        const solHexes = sols.map(x => x.blendHex);
-        if (solHexes.length === 1) {
-            for (const c of generateBlendCandidates(solHexes[0], solHexes[0], fastMode)) candidateBlends.add(c);
-        } else {
-            for (let i = 0; i < solHexes.length; i++) {
-                for (let j = i + 1; j < solHexes.length; j++) {
-                    for (const c of generateBlendCandidates(solHexes[i], solHexes[j], fastMode)) candidateBlends.add(c);
+        for (const h of sols) candidateBlends.add(h);
+        if (sols.length >= 2) {
+            for (let i = 0; i < sols.length; i++) {
+                for (let j = i + 1; j < sols.length; j++) {
+                    const rgbI = hexToRgb(sols[i]), rgbJ = hexToRgb(sols[j]);
+                    for (let k = 0; k <= 20; k++) {
+                        const t = k / 20;
+                        candidateBlends.add(rgbToHex({
+                            r: Math.max(0, Math.min(255, Math.round(rgbI.r*(1-t)+rgbJ.r*t))),
+                            g: Math.max(0, Math.min(255, Math.round(rgbI.g*(1-t)+rgbJ.g*t))),
+                            b: Math.max(0, Math.min(255, Math.round(rgbI.b*(1-t)+rgbJ.b*t))),
+                        }));
+                    }
                 }
             }
-            // Also add centroid
-            const rgbs = solHexes.map(h => hexToRgb(h));
+        }
+        return evalBlendCandidates(s, pcts, candidateBlends);
+    }
+
+    // Full blend search with generateBlendCandidates (for final refinement)
+    function bestBlendForSetFull(s, pcts) {
+        const sols = [];
+        for (let ti = 0; ti < pcts.length && ti < s.targets.length; ti++) {
+            const sol = solveBlendColorAtPct(s.baseHex, s.targets[ti], pcts[ti], space);
+            if (sol) sols.push(sol.blendHex);
+        }
+        if (sols.length === 0) return null;
+        const candidateBlends = new Set();
+        if (sols.length === 1) {
+            for (const c of generateBlendCandidates(sols[0], sols[0], fastMode)) candidateBlends.add(c);
+        } else {
+            for (let i = 0; i < sols.length; i++) {
+                for (let j = i + 1; j < sols.length; j++) {
+                    for (const c of generateBlendCandidates(sols[i], sols[j], fastMode)) candidateBlends.add(c);
+                }
+            }
+            const rgbs = sols.map(h => hexToRgb(h));
             const centroid = rgbToHex({
                 r: Math.round(rgbs.reduce((a,c)=>a+c.r,0)/rgbs.length),
                 g: Math.round(rgbs.reduce((a,c)=>a+c.g,0)/rgbs.length),
                 b: Math.round(rgbs.reduce((a,c)=>a+c.b,0)/rgbs.length),
             });
             candidateBlends.add(centroid);
-            for (const c of generateBlendCandidates(solHexes[0], centroid, fastMode)) candidateBlends.add(c);
         }
+        return evalBlendCandidates(s, pcts, candidateBlends);
+    }
 
-        let best = null, bestDE = Infinity;
+    // Select blend by minimax (lowest worst-target deltaE) within each set
+    function evalBlendCandidates(s, pcts, candidateBlends) {
+        let best = null, bestWorstDE = Infinity;
         for (const cHex of candidateBlends) {
-            let worstDE = 0;
+            let worstDE = 0, totalDE = 0;
             const stateResults = [];
             for (let ti = 0; ti < pcts.length && ti < s.targets.length; ti++) {
                 const comp = colorMix(s.baseHex, cHex, pcts[ti], space);
                 const dE = deltaE(comp, s.targets[ti]);
+                totalDE += dE;
                 if (dE > worstDE) worstDE = dE;
                 stateResults.push({ targetHex: s.targets[ti], computed: comp, deltaE: dE, percent: pcts[ti] });
             }
-            if (worstDE < bestDE) {
-                bestDE = worstDE;
-                const totalDE = stateResults.reduce((a, r) => a + r.deltaE, 0);
+            if (worstDE < bestWorstDE) {
+                bestWorstDE = worstDE;
                 best = {
                     blendHex: cHex,
                     stateResults,
@@ -583,7 +610,139 @@ function solvePerSetBlendSharedPct(sets, space, fixedPcts, fastMode) {
 
     const COARSE = [1, 7, 14, 21, 28, 36, 44, 53, 62, 71, 80, 89, 97, 100];
 
-    // Initialize: find best coarse pct for each target independently
+    function evalPctsLight(pcts) {
+        let totalDE = 0, valid = true;
+        const setResults = [];
+        for (const s of sets) {
+            const res = bestBlendForSetLight(s, pcts);
+            if (!res) { valid = false; break; }
+            totalDE += res.totalDeltaE;
+            setResults.push(res);
+        }
+        return valid ? { totalDE, setResults } : null;
+    }
+
+    if (numTargets <= 2) {
+        // ── 2D grid search (like old algorithm) ──
+        const ranges = [];
+        for (let ti = 0; ti < numTargets; ti++) {
+            ranges.push(fixedPcts[ti] != null ? [fixedPcts[ti]] : COARSE);
+        }
+
+        // Phase 1: coarse scan — use analytical deltaE as proxy
+        const coarseScores = [];
+        if (numTargets === 1) {
+            for (const p0 of ranges[0]) {
+                let totalDE = 0, valid = true;
+                for (const s of sets) {
+                    const target = s.targets[0] || s.targets[s.targets.length - 1];
+                    const sol = solveBlendColorAtPct(s.baseHex, target, p0, space);
+                    if (!sol) { valid = false; break; }
+                    totalDE += sol.deltaE;
+                }
+                if (valid) coarseScores.push({ pcts: [p0], score: totalDE });
+            }
+        } else {
+            for (const p0 of ranges[0]) {
+                for (const p1 of ranges[1]) {
+                    let totalDE = 0, valid = true;
+                    for (const s of sets) {
+                        for (let ti = 0; ti < 2; ti++) {
+                            const target = s.targets[ti] || s.targets[s.targets.length - 1];
+                            const pct = ti === 0 ? p0 : p1;
+                            const sol = solveBlendColorAtPct(s.baseHex, target, pct, space);
+                            if (!sol) { valid = false; break; }
+                            totalDE += sol.deltaE;
+                        }
+                        if (!valid) break;
+                    }
+                    if (valid) coarseScores.push({ pcts: [p0, p1], score: totalDE });
+                }
+            }
+        }
+        coarseScores.sort((a, b) => a.score - b.score);
+        if (coarseScores.length === 0) return null;
+
+        // Phase 2: expand top-20 coarse results ±5, evaluate with light blend search
+        const pairsToEval = new Map();
+        for (const { pcts } of coarseScores.slice(0, 20)) {
+            if (numTargets === 1) {
+                if (fixedPcts[0] != null) {
+                    pairsToEval.set(pcts[0], [pcts[0]]);
+                } else {
+                    for (let d = -5; d <= 5; d++) {
+                        const p = Math.max(1, Math.min(100, pcts[0] + d));
+                        pairsToEval.set(p, [p]);
+                    }
+                }
+            } else {
+                const r0 = fixedPcts[0] != null ? [pcts[0]] : [];
+                const r1 = fixedPcts[1] != null ? [pcts[1]] : [];
+                if (fixedPcts[0] == null) for (let d = -5; d <= 5; d++) r0.push(Math.max(1, Math.min(100, pcts[0] + d)));
+                if (fixedPcts[1] == null) for (let d = -5; d <= 5; d++) r1.push(Math.max(1, Math.min(100, pcts[1] + d)));
+                for (const p0 of r0) for (const p1 of r1) pairsToEval.set(p0 * 1000 + p1, [p0, p1]);
+            }
+        }
+
+        let best = null, bestScore = Infinity;
+        for (const pcts of pairsToEval.values()) {
+            const ev = evalPctsLight(pcts);
+            if (ev && ev.totalDE < bestScore) {
+                bestScore = ev.totalDE;
+                best = { pcts: [...pcts], totalDE: ev.totalDE, setResults: ev.setResults };
+            }
+        }
+        if (!best) return null;
+
+        // Phase 3: tight refinement ±2 with light blend
+        const tightPairs = new Map();
+        if (numTargets === 1) {
+            if (fixedPcts[0] != null) {
+                tightPairs.set(best.pcts[0], [best.pcts[0]]);
+            } else {
+                for (let d = -2; d <= 2; d++) tightPairs.set(Math.max(1, Math.min(100, best.pcts[0] + d)), [Math.max(1, Math.min(100, best.pcts[0] + d))]);
+            }
+        } else {
+            const r0 = fixedPcts[0] != null ? [best.pcts[0]] : [];
+            const r1 = fixedPcts[1] != null ? [best.pcts[1]] : [];
+            if (fixedPcts[0] == null) for (let d = -2; d <= 2; d++) r0.push(Math.max(1, Math.min(100, best.pcts[0] + d)));
+            if (fixedPcts[1] == null) for (let d = -2; d <= 2; d++) r1.push(Math.max(1, Math.min(100, best.pcts[1] + d)));
+            for (const p0 of r0) for (const p1 of r1) tightPairs.set(p0 * 1000 + p1, [p0, p1]);
+        }
+        for (const pcts of tightPairs.values()) {
+            const ev = evalPctsLight(pcts);
+            if (ev && ev.totalDE < bestScore) {
+                bestScore = ev.totalDE;
+                best = { pcts: [...pcts], totalDE: ev.totalDE, setResults: ev.setResults };
+            }
+        }
+
+        // Phase 4: re-evaluate winner with full blend search per set
+        if (!fastMode) {
+            let totalDE = 0;
+            const fullSetResults = [];
+            let valid = true;
+            for (const s of sets) {
+                const res = bestBlendForSetFull(s, best.pcts);
+                if (!res) { valid = false; break; }
+                totalDE += res.totalDeltaE;
+                fullSetResults.push(res);
+            }
+            if (valid) {
+                best = { pcts: best.pcts, totalDE, setResults: fullSetResults };
+            }
+        }
+
+        return {
+            percents: best.pcts,
+            hoverPercent: best.pcts[0],
+            activePercent: best.pcts[1] || best.pcts[0],
+            totalDeltaE: best.totalDE,
+            sets: best.setResults,
+        };
+    }
+
+    // ── N≥3 targets: coordinate descent ──
     let currentPcts = [];
     for (let ti = 0; ti < numTargets; ti++) {
         if (fixedPcts[ti] != null) { currentPcts.push(fixedPcts[ti]); continue; }
@@ -601,19 +760,6 @@ function solvePerSetBlendSharedPct(sets, space, fixedPcts, fastMode) {
         currentPcts.push(bestPct);
     }
 
-    function evalPcts(pcts) {
-        let totalDE = 0, valid = true;
-        const setResults = [];
-        for (const s of sets) {
-            const res = bestBlendForSet(s, pcts);
-            if (!res) { valid = false; break; }
-            totalDE += res.totalDeltaE;
-            setResults.push(res);
-        }
-        return valid ? { totalDE, setResults } : null;
-    }
-
-    // Coordinate descent: optimize each pct while fixing others
     for (let round = 0; round < (fastMode ? 1 : 3); round++) {
         for (let ti = 0; ti < numTargets; ti++) {
             if (fixedPcts[ti] != null) continue;
@@ -625,22 +771,31 @@ function solvePerSetBlendSharedPct(sets, space, fixedPcts, fastMode) {
             for (const p of pctSet) {
                 const testPcts = [...currentPcts];
                 testPcts[ti] = p;
-                const ev = evalPcts(testPcts);
+                const ev = evalPctsLight(testPcts);
                 if (ev && ev.totalDE < bestScore) { bestScore = ev.totalDE; bestPct = p; }
             }
             currentPcts[ti] = bestPct;
         }
     }
 
-    const finalEval = evalPcts(currentPcts);
-    if (!finalEval) return null;
+    // Final full blend search at winning pcts
+    let finalDE = 0;
+    const finalSetResults = [];
+    let valid = true;
+    for (const s of sets) {
+        const res = fastMode ? bestBlendForSetLight(s, currentPcts) : bestBlendForSetFull(s, currentPcts);
+        if (!res) { valid = false; break; }
+        finalDE += res.totalDeltaE;
+        finalSetResults.push(res);
+    }
+    if (!valid) return null;
 
     return {
         percents: currentPcts,
         hoverPercent: currentPcts[0],
         activePercent: currentPcts[1] || currentPcts[0],
-        totalDeltaE: finalEval.totalDE,
-        sets: finalEval.setResults,
+        totalDeltaE: finalDE,
+        sets: finalSetResults,
     };
 }
 
