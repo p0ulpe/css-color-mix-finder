@@ -518,9 +518,9 @@ function createStateCard(opts) {
   card.innerHTML = `
         <div class="state-label"><span class="tag ${escapeHTML(tCls)}">${escapeHTML(tag)}</span></div>
         <div class="state-mix-preview">
-            <div class="mix-swatch" style="background:${sBaseHex}" data-tooltip="${sBaseHex.toUpperCase()}"></div>
+            <div class="mix-swatch mix-copyable" style="background:${sBaseHex}" data-tooltip="Base: ${sBaseHex.toUpperCase()}" data-copy="${sBaseHex.toUpperCase()}"></div>
             <div class="mix-arrow">+</div>
-            <div class="mix-swatch blend-indicator" style="background:${sBlendHex}" data-tooltip="${sBlendHex.toUpperCase()}"></div>
+            <div class="mix-swatch blend-indicator mix-copyable" style="background:${sBlendHex}" data-tooltip="Blend: ${sBlendHex.toUpperCase()}" data-copy="${sBlendHex.toUpperCase()}"></div>
             <div class="mix-arrow">=</div>
             <div class="mix-compare-wrap">
                 <div class="mix-compare-labels">
