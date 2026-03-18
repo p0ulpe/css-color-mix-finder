@@ -611,66 +611,84 @@ function solvePerSetBlendSharedPct(sets, space, fixedPcts, fastMode) {
     const COARSE = [1, 7, 14, 21, 28, 36, 44, 53, 62, 71, 80, 89, 97, 100];
 
     function evalPctsLight(pcts) {
-        let totalDE = 0, valid = true;
+        let totalDE = 0, worstDE = 0, valid = true;
         const setResults = [];
         for (const s of sets) {
             const res = bestBlendForSetLight(s, pcts);
             if (!res) { valid = false; break; }
             totalDE += res.totalDeltaE;
+            const setWorst = Math.max(...res.stateResults.map(r => r.deltaE));
+            if (setWorst > worstDE) worstDE = setWorst;
             setResults.push(res);
         }
-        return valid ? { totalDE, setResults } : null;
+        return valid ? { totalDE, worstDE, setResults } : null;
+    }
+
+    function evalPctsFull(pcts) {
+        let totalDE = 0, worstDE = 0, valid = true;
+        const setResults = [];
+        for (const s of sets) {
+            const res = bestBlendForSetFull(s, pcts);
+            if (!res) { valid = false; break; }
+            totalDE += res.totalDeltaE;
+            const setWorst = Math.max(...res.stateResults.map(r => r.deltaE));
+            if (setWorst > worstDE) worstDE = setWorst;
+            setResults.push(res);
+        }
+        return valid ? { totalDE, worstDE, setResults } : null;
     }
 
     if (numTargets <= 2) {
-        // ── 2D grid search (like old algorithm) ──
+        // ── 2D grid search ──
         const ranges = [];
         for (let ti = 0; ti < numTargets; ti++) {
             ranges.push(fixedPcts[ti] != null ? [fixedPcts[ti]] : COARSE);
         }
 
-        // Phase 1: coarse scan — use analytical deltaE as proxy
+        // Phase 1: coarse scan — use analytical deltaE as proxy (minimax across sets)
         const coarseScores = [];
         if (numTargets === 1) {
             for (const p0 of ranges[0]) {
-                let totalDE = 0, valid = true;
+                let worstDE = 0, valid = true;
                 for (const s of sets) {
                     const target = s.targets[0] || s.targets[s.targets.length - 1];
                     const sol = solveBlendColorAtPct(s.baseHex, target, p0, space);
                     if (!sol) { valid = false; break; }
-                    totalDE += sol.deltaE;
+                    if (sol.deltaE > worstDE) worstDE = sol.deltaE;
                 }
-                if (valid) coarseScores.push({ pcts: [p0], score: totalDE });
+                if (valid) coarseScores.push({ pcts: [p0], score: worstDE });
             }
         } else {
             for (const p0 of ranges[0]) {
                 for (const p1 of ranges[1]) {
-                    let totalDE = 0, valid = true;
+                    let worstDE = 0, valid = true;
                     for (const s of sets) {
+                        let setWorst = 0;
                         for (let ti = 0; ti < 2; ti++) {
                             const target = s.targets[ti] || s.targets[s.targets.length - 1];
                             const pct = ti === 0 ? p0 : p1;
                             const sol = solveBlendColorAtPct(s.baseHex, target, pct, space);
                             if (!sol) { valid = false; break; }
-                            totalDE += sol.deltaE;
+                            if (sol.deltaE > setWorst) setWorst = sol.deltaE;
                         }
                         if (!valid) break;
+                        if (setWorst > worstDE) worstDE = setWorst;
                     }
-                    if (valid) coarseScores.push({ pcts: [p0, p1], score: totalDE });
+                    if (valid) coarseScores.push({ pcts: [p0, p1], score: worstDE });
                 }
             }
         }
         coarseScores.sort((a, b) => a.score - b.score);
         if (coarseScores.length === 0) return null;
 
-        // Phase 2: expand top-20 coarse results ±5, evaluate with light blend search
+        // Phase 2: expand top-30 coarse results ±6, evaluate with light blend, score by worstDE
         const pairsToEval = new Map();
-        for (const { pcts } of coarseScores.slice(0, 20)) {
+        for (const { pcts } of coarseScores.slice(0, 30)) {
             if (numTargets === 1) {
                 if (fixedPcts[0] != null) {
                     pairsToEval.set(pcts[0], [pcts[0]]);
                 } else {
-                    for (let d = -5; d <= 5; d++) {
+                    for (let d = -6; d <= 6; d++) {
                         const p = Math.max(1, Math.min(100, pcts[0] + d));
                         pairsToEval.set(p, [p]);
                     }
@@ -678,59 +696,135 @@ function solvePerSetBlendSharedPct(sets, space, fixedPcts, fastMode) {
             } else {
                 const r0 = fixedPcts[0] != null ? [pcts[0]] : [];
                 const r1 = fixedPcts[1] != null ? [pcts[1]] : [];
-                if (fixedPcts[0] == null) for (let d = -5; d <= 5; d++) r0.push(Math.max(1, Math.min(100, pcts[0] + d)));
-                if (fixedPcts[1] == null) for (let d = -5; d <= 5; d++) r1.push(Math.max(1, Math.min(100, pcts[1] + d)));
+                if (fixedPcts[0] == null) for (let d = -6; d <= 6; d++) r0.push(Math.max(1, Math.min(100, pcts[0] + d)));
+                if (fixedPcts[1] == null) for (let d = -6; d <= 6; d++) r1.push(Math.max(1, Math.min(100, pcts[1] + d)));
                 for (const p0 of r0) for (const p1 of r1) pairsToEval.set(p0 * 1000 + p1, [p0, p1]);
             }
         }
 
-        let best = null, bestScore = Infinity;
+        const phase2Results = [];
         for (const pcts of pairsToEval.values()) {
             const ev = evalPctsLight(pcts);
-            if (ev && ev.totalDE < bestScore) {
-                bestScore = ev.totalDE;
-                best = { pcts: [...pcts], totalDE: ev.totalDE, setResults: ev.setResults };
-            }
+            if (ev) phase2Results.push({ pcts: [...pcts], worstDE: ev.worstDE, totalDE: ev.totalDE, setResults: ev.setResults });
         }
-        if (!best) return null;
+        phase2Results.sort((a, b) => a.worstDE - b.worstDE);
+        if (phase2Results.length === 0) return null;
 
-        // Phase 3: tight refinement ±2 with light blend
-        const tightPairs = new Map();
-        if (numTargets === 1) {
-            if (fixedPcts[0] != null) {
-                tightPairs.set(best.pcts[0], [best.pcts[0]]);
+        // Phase 3: tight refinement ±2 around top-5 candidates, score by worstDE
+        let best = null, bestScore = Infinity;
+        for (const candidate of phase2Results.slice(0, 5)) {
+            const tightPairs = new Map();
+            if (numTargets === 1) {
+                if (fixedPcts[0] != null) {
+                    tightPairs.set(candidate.pcts[0], [candidate.pcts[0]]);
+                } else {
+                    for (let d = -2; d <= 2; d++) {
+                        const p = Math.max(1, Math.min(100, candidate.pcts[0] + d));
+                        tightPairs.set(p, [p]);
+                    }
+                }
             } else {
-                for (let d = -2; d <= 2; d++) tightPairs.set(Math.max(1, Math.min(100, best.pcts[0] + d)), [Math.max(1, Math.min(100, best.pcts[0] + d))]);
+                const r0 = fixedPcts[0] != null ? [candidate.pcts[0]] : [];
+                const r1 = fixedPcts[1] != null ? [candidate.pcts[1]] : [];
+                if (fixedPcts[0] == null) for (let d = -2; d <= 2; d++) r0.push(Math.max(1, Math.min(100, candidate.pcts[0] + d)));
+                if (fixedPcts[1] == null) for (let d = -2; d <= 2; d++) r1.push(Math.max(1, Math.min(100, candidate.pcts[1] + d)));
+                for (const p0 of r0) for (const p1 of r1) tightPairs.set(p0 * 1000 + p1, [p0, p1]);
             }
-        } else {
-            const r0 = fixedPcts[0] != null ? [best.pcts[0]] : [];
-            const r1 = fixedPcts[1] != null ? [best.pcts[1]] : [];
-            if (fixedPcts[0] == null) for (let d = -2; d <= 2; d++) r0.push(Math.max(1, Math.min(100, best.pcts[0] + d)));
-            if (fixedPcts[1] == null) for (let d = -2; d <= 2; d++) r1.push(Math.max(1, Math.min(100, best.pcts[1] + d)));
-            for (const p0 of r0) for (const p1 of r1) tightPairs.set(p0 * 1000 + p1, [p0, p1]);
+            for (const pcts of tightPairs.values()) {
+                const ev = evalPctsLight(pcts);
+                if (ev && ev.worstDE < bestScore) {
+                    bestScore = ev.worstDE;
+                    best = { pcts: [...pcts], worstDE: ev.worstDE, totalDE: ev.totalDE, setResults: ev.setResults };
+                }
+            }
         }
-        for (const pcts of tightPairs.values()) {
-            const ev = evalPctsLight(pcts);
-            if (ev && ev.totalDE < bestScore) {
-                bestScore = ev.totalDE;
-                best = { pcts: [...pcts], totalDE: ev.totalDE, setResults: ev.setResults };
+        if (!best) best = phase2Results[0];
+
+        // Phase 4: re-evaluate top pct combos with full blend search
+        if (!fastMode) {
+            const topPctCandidates = new Map();
+            topPctCandidates.set(best.pcts.join(','), best.pcts);
+            for (const r of phase2Results.slice(0, 5)) {
+                topPctCandidates.set(r.pcts.join(','), r.pcts);
             }
+            // Also try ±1 around winner
+            if (numTargets === 1) {
+                if (fixedPcts[0] == null) {
+                    for (let d = -1; d <= 1; d++) {
+                        const p = Math.max(1, Math.min(100, best.pcts[0] + d));
+                        topPctCandidates.set([p].join(','), [p]);
+                    }
+                }
+            } else {
+                for (let d0 = -1; d0 <= 1; d0++) {
+                    for (let d1 = -1; d1 <= 1; d1++) {
+                        const p0 = fixedPcts[0] != null ? best.pcts[0] : Math.max(1, Math.min(100, best.pcts[0] + d0));
+                        const p1 = fixedPcts[1] != null ? best.pcts[1] : Math.max(1, Math.min(100, best.pcts[1] + d1));
+                        topPctCandidates.set([p0, p1].join(','), [p0, p1]);
+                    }
+                }
+            }
+
+            let fullBest = null, fullBestScore = Infinity;
+            for (const pcts of topPctCandidates.values()) {
+                const ev = evalPctsFull(pcts);
+                if (ev && ev.worstDE < fullBestScore) {
+                    fullBestScore = ev.worstDE;
+                    fullBest = { pcts: [...pcts], totalDE: ev.totalDE, setResults: ev.setResults };
+                }
+            }
+            if (fullBest) best = fullBest;
         }
 
-        // Phase 4: re-evaluate winner with full blend search per set
-        if (!fastMode) {
-            let totalDE = 0;
-            const fullSetResults = [];
-            let valid = true;
-            for (const s of sets) {
-                const res = bestBlendForSetFull(s, best.pcts);
-                if (!res) { valid = false; break; }
-                totalDE += res.totalDeltaE;
-                fullSetResults.push(res);
+        // Phase 5: hill-climb each set's blend color ±4 (independent per set)
+        if (!fastMode && best) {
+            let improved = true;
+            while (improved) {
+                improved = false;
+                for (let si = 0; si < sets.length; si++) {
+                    const s = sets[si];
+                    const currentBlend = best.setResults[si].blendHex;
+                    const rgb = hexToRgb(currentBlend);
+                    let bestForSet = best.setResults[si];
+                    let bestSetWorstDE = Math.max(...bestForSet.stateResults.map(r => r.deltaE));
+                    for (let dr = -4; dr <= 4; dr++) {
+                        for (let dg = -4; dg <= 4; dg++) {
+                            for (let db = -4; db <= 4; db++) {
+                                if (dr === 0 && dg === 0 && db === 0) continue;
+                                const cHex = rgbToHex({
+                                    r: Math.max(0, Math.min(255, rgb.r + dr)),
+                                    g: Math.max(0, Math.min(255, rgb.g + dg)),
+                                    b: Math.max(0, Math.min(255, rgb.b + db)),
+                                });
+                                let worstDE = 0, totalDE = 0;
+                                const stateResults = [];
+                                for (let ti = 0; ti < best.pcts.length && ti < s.targets.length; ti++) {
+                                    const comp = colorMix(s.baseHex, cHex, best.pcts[ti], space);
+                                    const dE = deltaE(comp, s.targets[ti]);
+                                    totalDE += dE;
+                                    if (dE > worstDE) worstDE = dE;
+                                    stateResults.push({ targetHex: s.targets[ti], computed: comp, deltaE: dE, percent: best.pcts[ti] });
+                                }
+                                if (worstDE < bestSetWorstDE) {
+                                    bestSetWorstDE = worstDE;
+                                    bestForSet = {
+                                        blendHex: cHex,
+                                        stateResults,
+                                        totalDeltaE: totalDE,
+                                        hoverComputed: stateResults[0]?.computed,
+                                        hoverDeltaE: stateResults[0]?.deltaE || 0,
+                                        activeComputed: (stateResults[1] || stateResults[0])?.computed,
+                                        activeDeltaE: (stateResults[1] || stateResults[0])?.deltaE || 0,
+                                    };
+                                    improved = true;
+                                }
+                            }
+                        }
+                    }
+                    best.setResults[si] = bestForSet;
+                }
             }
-            if (valid) {
-                best = { pcts: best.pcts, totalDE, setResults: fullSetResults };
-            }
+            best.totalDE = best.setResults.reduce((sum, s) => sum + s.totalDeltaE, 0);
         }
 
         return {
