@@ -137,7 +137,7 @@ function getMaxTargets() {
   return max;
 }
 
-const MAX_TARGETS = 5;
+const MAX_TARGETS = 3;
 
 function updateAddTargetButtons() {
   document.querySelectorAll(".set-row").forEach((row) => {
